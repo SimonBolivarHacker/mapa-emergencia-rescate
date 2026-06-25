@@ -86,5 +86,5 @@ _(pendiente)_
 
 ### Guías
 
-_(pendiente)_
+- [Desplegar la sincronización con Vercel Cron](guides/sincronizacion-cron-vercel.md)
 </content>
