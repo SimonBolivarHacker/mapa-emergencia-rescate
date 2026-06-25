@@ -13,6 +13,8 @@ import AdminLogin from "./AdminLogin";
 import AddressSearch, { type GeocodeResult } from "./AddressSearch";
 import { useLowBandwidthMode } from "./useLowBandwidthMode";
 import { distanceMeters, freshnessClass, timeAgo } from "@/lib/format";
+import type { MissingMapMarker, MissingStats } from "@/lib/missing";
+import type { MapBounds } from "./MapView";
 import {
   countPending,
   enqueueReport,
@@ -141,6 +143,11 @@ export default function EmergencyApp() {
     ts: number;
     id?: string;
   } | null>(null);
+  const [missingStats, setMissingStats] = useState<MissingStats | null>(null);
+  const [missingMapMarkers, setMissingMapMarkers] = useState<MissingMapMarker[]>(
+    [],
+  );
+  const mapBoundsRef = useRef<MapBounds | null>(null);
 
   const isAdmin = Boolean(adminToken);
 
@@ -173,6 +180,40 @@ export default function EmergencyApp() {
       // se reintenta en el siguiente ciclo de polling
     }
   }, []);
+
+  const fetchMissingStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/missing/stats", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMissingStats(data.stats ?? null);
+    } catch {
+      // se reintenta en el siguiente ciclo
+    }
+  }, []);
+
+  const fetchMissingMap = useCallback(async (bounds?: MapBounds | null) => {
+    try {
+      const b = bounds ?? mapBoundsRef.current;
+      const qs = b
+        ? `?north=${b.north}&south=${b.south}&east=${b.east}&west=${b.west}&limit=800`
+        : "?limit=800";
+      const res = await fetch(`/api/missing/map${qs}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setMissingMapMarkers(data.markers ?? []);
+    } catch {
+      // se reintenta al mover el mapa
+    }
+  }, []);
+
+  const handleBoundsChange = useCallback(
+    (bounds: MapBounds) => {
+      mapBoundsRef.current = bounds;
+      fetchMissingMap(bounds);
+    },
+    [fetchMissingMap],
+  );
 
   const handleConfirm = useCallback(
     async (id: string) => {
@@ -212,7 +253,12 @@ export default function EmergencyApp() {
     const start = () => {
       if (interval) return;
       fetchReports();
-      interval = setInterval(fetchReports, network.pollIntervalMs);
+      fetchMissingStats();
+      fetchMissingMap();
+      interval = setInterval(() => {
+        fetchReports();
+        fetchMissingStats();
+      }, network.pollIntervalMs);
     };
     const stop = () => {
       if (interval) clearInterval(interval);
@@ -231,7 +277,7 @@ export default function EmergencyApp() {
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [fetchReports, network.pollIntervalMs]);
+  }, [fetchReports, fetchMissingStats, fetchMissingMap, network.pollIntervalMs]);
 
   // Intenta enviar los reportes encolados sin conexión. Se detiene en cuanto
   // la red vuelve a fallar y reintentará en el siguiente disparo.
@@ -417,8 +463,19 @@ export default function EmergencyApp() {
     for (const report of reports) {
       if (base[report.type] !== undefined) base[report.type] += 1;
     }
+    // Total consolidado de desaparecidos activos en la base de datos.
+    if (missingStats) {
+      base.missing = missingStats.active;
+    }
     return base;
-  }, [reports]);
+  }, [reports, missingStats]);
+
+  const showMissingOnMap = filter === "all" || filter === "missing";
+
+  const mapReports = useMemo(() => {
+    if (filter === "all") return reports;
+    return reports.filter((r) => r.type === filter);
+  }, [reports, filter]);
 
   const visibleReports = useMemo(() => {
     const normalize = (value: string) =>
@@ -479,7 +536,10 @@ export default function EmergencyApp() {
           />
           <div className="relative h-[520px] overflow-hidden rounded-2xl border border-slate-200 shadow-sm lg:h-[640px]">
             <MapView
-              reports={reports}
+              reports={mapReports}
+              missingMarkers={missingMapMarkers}
+              showMissingOnMap={showMissingOnMap}
+              onBoundsChange={handleBoundsChange}
               draft={draft}
               onPick={handlePick}
               onResolve={handleResolve}
@@ -499,9 +559,24 @@ export default function EmergencyApp() {
         <aside className="flex flex-col gap-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Reportes activos: {reports.length}
-              </h3>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Desaparecidos activos:{" "}
+                  {missingStats
+                    ? missingStats.active.toLocaleString("es-VE")
+                    : "…"}
+                </h3>
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Reportes en mapa: {reports.length}
+                  {missingStats && missingStats.onMap > 0 && (
+                    <>
+                      {" "}
+                      · {missingStats.onMap.toLocaleString("es-VE")} con punto
+                      en el mapa
+                    </>
+                  )}
+                </p>
+              </div>
               {isAdmin ? (
                 <button
                   type="button"
@@ -610,6 +685,18 @@ export default function EmergencyApp() {
           </div>
 
           <div className="max-h-[55vh] flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm lg:max-h-[520px]">
+            {filter === "missing" && missingStats && missingStats.active > 0 && (
+              <div className="mb-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs text-purple-900">
+                Hay{" "}
+                <strong>{missingStats.active.toLocaleString("es-VE")}</strong>{" "}
+                personas desaparecidas en la base consolidada. En el mapa se
+                muestran las que tienen ubicación geocodificada (
+                {missingStats.onMap.toLocaleString("es-VE")}).{" "}
+                <a href="#desaparecidas" className="font-semibold underline">
+                  Ver lista completa →
+                </a>
+              </div>
+            )}
             {visibleReports.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">
                 {query.trim()

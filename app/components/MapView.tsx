@@ -12,6 +12,23 @@ import {
 } from "react-leaflet";
 import { REPORT_TYPES, type EmergencyReport, type ReportType } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import type { MissingMapMarker } from "@/lib/missing";
+
+export type MapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
+/** Pequeño desplazamiento para que varios puntos en la misma zona no se superpongan. */
+function jitterPosition(id: string, lat: number, lng: number): [number, number] {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  const angle = ((h % 360) * Math.PI) / 180;
+  const radius = 0.00025 * ((Math.abs(h) % 8) + 1);
+  return [lat + radius * Math.cos(angle), lng + radius * Math.sin(angle)];
+}
 
 const iconCache = new Map<ReportType, L.DivIcon>();
 
@@ -85,8 +102,39 @@ function ClickHandler({
   return null;
 }
 
+function BoundsHandler({
+  onBoundsChange,
+}: {
+  onBoundsChange?: (bounds: MapBounds) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onBoundsChange) return;
+    const emit = () => {
+      const b = map.getBounds();
+      onBoundsChange({
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest(),
+      });
+    };
+    emit();
+    map.on("moveend", emit);
+    map.on("zoomend", emit);
+    return () => {
+      map.off("moveend", emit);
+      map.off("zoomend", emit);
+    };
+  }, [map, onBoundsChange]);
+  return null;
+}
+
 interface MapViewProps {
   reports: EmergencyReport[];
+  missingMarkers?: MissingMapMarker[];
+  showMissingOnMap?: boolean;
+  onBoundsChange?: (bounds: MapBounds) => void;
   draft: { lat: number; lng: number } | null;
   onPick: (lat: number, lng: number) => void;
   onResolve: (id: string) => void;
@@ -100,6 +148,9 @@ interface MapViewProps {
 
 export default function MapView({
   reports,
+  missingMarkers = [],
+  showMissingOnMap = true,
+  onBoundsChange,
   draft,
   onPick,
   onResolve,
@@ -140,6 +191,56 @@ export default function MapView({
       <ResizeHandler />
       <FlyToHandler focus={focus} getMarker={getMarker} />
       <ClickHandler onPick={onPick} />
+
+      <ResizeHandler />
+      <FlyToHandler focus={focus} getMarker={getMarker} />
+      <BoundsHandler onBoundsChange={onBoundsChange} />
+      <ClickHandler onPick={onPick} />
+
+      {showMissingOnMap &&
+        missingMarkers.map((person) => {
+          const [lat, lng] = jitterPosition(person.id, person.lat, person.lng);
+          const markerId = `missing:${person.id}`;
+          return (
+            <Marker
+              key={markerId}
+              position={[lat, lng]}
+              icon={markerIcon("missing")}
+              ref={(marker) => {
+                if (marker) markerRefs.current.set(markerId, marker);
+                else markerRefs.current.delete(markerId);
+              }}
+            >
+              <Popup>
+                <div className="space-y-1">
+                  <p className="font-semibold">
+                    {REPORT_TYPES.missing.emoji} Se busca
+                  </p>
+                  {person.photoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={person.photoUrl}
+                      alt={`Foto de ${person.name}`}
+                      loading="lazy"
+                      className="my-1 max-h-40 w-full rounded-md object-cover"
+                    />
+                  )}
+                  <p className="font-medium">{person.name}</p>
+                  {person.age !== null && <p>{person.age} años</p>}
+                  {person.lastSeen && (
+                    <p className="text-sm">📍 {person.lastSeen}</p>
+                  )}
+                  <a
+                    href="#desaparecidas"
+                    className="mt-1 inline-block text-xs font-medium text-purple-700 underline"
+                  >
+                    Ver ficha completa →
+                  </a>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
 
       {reports.map((report) => (
         <Marker

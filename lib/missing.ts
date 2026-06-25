@@ -21,6 +21,25 @@ export interface MissingPerson {
   createdAt: number;
 }
 
+/** Marcador ligero para el mapa (sin cargar toda la ficha). */
+export interface MissingMapMarker {
+  id: string;
+  name: string;
+  age: number | null;
+  lastSeen: string;
+  photoUrl: string | null;
+  lat: number;
+  lng: number;
+  createdAt: number;
+}
+
+export interface MissingStats {
+  active: number;
+  found: number;
+  total: number;
+  onMap: number;
+}
+
 export interface NewMissingPerson {
   name: string;
   age?: number | string | null;
@@ -71,11 +90,33 @@ function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS resolution_note TEXT`;
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS resolution_photo TEXT`;
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS resolved_at BIGINT`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS external_id TEXT`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS source TEXT`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS source_url TEXT`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS photo_external_url TEXT`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`;
+      await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`;
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS missing_persons_external_id_idx ON missing_persons (external_id) WHERE external_id IS NOT NULL`;
 
       // Índice del listado paginado: filtro por estado + orden + offset.
       await sql`
         CREATE INDEX IF NOT EXISTS idx_missing_status_created
         ON missing_persons (status, created_at DESC, id DESC)
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_missing_map_coords
+        ON missing_persons (status, lat, lng)
+        WHERE lat IS NOT NULL AND lng IS NOT NULL
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS geocode_cache (
+          normalized_key TEXT PRIMARY KEY,
+          lat DOUBLE PRECISION NOT NULL,
+          lng DOUBLE PRECISION NOT NULL,
+          label TEXT NOT NULL DEFAULT '',
+          updated_at BIGINT NOT NULL
+        )
       `;
 
       // Búsqueda acento-insensitiva (best-effort). Un fallo aquí (p. ej. sin
@@ -122,14 +163,22 @@ type Row = {
   last_seen: string;
   contact: string;
   has_photo: boolean;
+  photo_external_url: string | null;
   status: string | null;
   resolution_note: string | null;
   has_resolution_photo: boolean;
   resolved_at: string | number | null;
   created_at: string | number;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 function rowToPerson(row: Row): MissingPerson {
+  const photoUrl = row.has_photo
+    ? `/api/missing/${row.id}/photo`
+    : row.photo_external_url
+      ? row.photo_external_url
+      : null;
   return {
     id: row.id,
     name: row.name,
@@ -137,7 +186,7 @@ function rowToPerson(row: Row): MissingPerson {
     description: row.description,
     lastSeen: row.last_seen,
     contact: row.contact,
-    photoUrl: row.has_photo ? `/api/missing/${row.id}/photo` : null,
+    photoUrl,
     status: (row.status === "found" ? "found" : "active") as MissingStatus,
     resolutionNote: row.resolution_note ?? null,
     resolutionPhotoUrl: row.has_resolution_photo
@@ -163,6 +212,7 @@ export function isValidPhotoDataUrl(photo: string): boolean {
 /** Columnas que alimentan `rowToPerson` (sin exponer las fotos embebidas). */
 const SELECT_COLS = `id, name, age, description, last_seen, contact,
   (photo IS NOT NULL) AS has_photo,
+  photo_external_url,
   status,
   resolution_note,
   (resolution_photo IS NOT NULL) AS has_resolution_photo,
@@ -497,18 +547,25 @@ export async function getMissingPhoto(
   id: string,
 ): Promise<PhotoData | RemotePhoto | null> {
   let stored: string | null = null;
+  let externalUrl: string | null = null;
   if (hasDbEnv()) {
     await ensureSchema();
     const rows = (await getSql()`
-      SELECT photo FROM missing_persons WHERE id = ${id}
-    `) as { photo: string | null }[];
+      SELECT photo, photo_external_url FROM missing_persons WHERE id = ${id}
+    `) as { photo: string | null; photo_external_url: string | null }[];
     stored = rows[0]?.photo ?? null;
+    externalUrl = rows[0]?.photo_external_url ?? null;
   } else {
     stored = memoryStore.get(id)?.photo ?? null;
   }
-  if (!stored) return null;
-  if (/^https?:\/\//i.test(stored)) return { redirectTo: stored };
-  return dataUrlToPhoto(stored);
+  if (stored) {
+    if (/^https?:\/\//i.test(stored)) return { redirectTo: stored };
+    return dataUrlToPhoto(stored);
+  }
+  if (externalUrl && /^https?:\/\//i.test(externalUrl)) {
+    return { redirectTo: externalUrl };
+  }
+  return null;
 }
 
 /** Foto-prueba que se subió al marcar a la persona como localizada. */
@@ -537,4 +594,113 @@ export async function removeMissing(id: string): Promise<boolean> {
     return rows.length > 0;
   }
   return memoryStore.delete(id);
+}
+
+/** Totales consolidados para el panel del mapa y el hero. */
+export async function countMissingStats(): Promise<MissingStats> {
+  if (!hasDbEnv()) {
+    const all = [...memoryStore.values()];
+    const active = all.filter((m) => m.status === "active").length;
+    const found = all.filter((m) => m.status === "found").length;
+    return { active, found, total: all.length, onMap: 0 };
+  }
+  await ensureSchema();
+  const rows = (await getSql()`
+    SELECT
+      count(*)::int AS total,
+      count(*) FILTER (WHERE status = 'active')::int AS active,
+      count(*) FILTER (WHERE status = 'found')::int AS found,
+      count(*) FILTER (
+        WHERE status = 'active' AND lat IS NOT NULL AND lng IS NOT NULL
+      )::int AS on_map
+    FROM missing_persons
+  `) as { total: number; active: number; found: number; on_map: number }[];
+  const row = rows[0] ?? { total: 0, active: 0, found: 0, on_map: 0 };
+  return {
+    total: row.total,
+    active: row.active,
+    found: row.found,
+    onMap: row.on_map,
+  };
+}
+
+export interface ListMissingMapParams {
+  north?: number;
+  south?: number;
+  east?: number;
+  west?: number;
+  limit?: number;
+}
+
+type MapRow = {
+  id: string;
+  name: string;
+  age: number | null;
+  last_seen: string;
+  has_photo: boolean;
+  photo_external_url: string | null;
+  lat: number;
+  lng: number;
+  created_at: string | number;
+};
+
+/** Marcadores de desaparecidos activos con coordenadas (viewport opcional). */
+export async function listMissingMapMarkers(
+  params: ListMissingMapParams = {},
+): Promise<MissingMapMarker[]> {
+  const limit = Math.min(Math.max(Math.trunc(params.limit ?? 500), 1), 2000);
+
+  if (!hasDbEnv()) return [];
+
+  await ensureSchema();
+  const sql = getSql();
+  const conditions = [
+    "status = 'active'",
+    "lat IS NOT NULL",
+    "lng IS NOT NULL",
+  ];
+  const values: unknown[] = [];
+  let n = 1;
+
+  const { north, south, east, west } = params;
+  if (
+    north !== undefined &&
+    south !== undefined &&
+    east !== undefined &&
+    west !== undefined &&
+    Number.isFinite(north) &&
+    Number.isFinite(south) &&
+    Number.isFinite(east) &&
+    Number.isFinite(west)
+  ) {
+    conditions.push(`lat BETWEEN $${n++} AND $${n++}`);
+    values.push(Math.min(south, north), Math.max(south, north));
+    conditions.push(`lng BETWEEN $${n++} AND $${n++}`);
+    values.push(Math.min(west, east), Math.max(west, east));
+  }
+
+  const rows = (await sql.query(
+    `SELECT id, name, age, last_seen,
+            (photo IS NOT NULL) AS has_photo,
+            photo_external_url,
+            lat, lng, created_at
+     FROM missing_persons
+     WHERE ${conditions.join(" AND ")}
+     ORDER BY created_at DESC
+     LIMIT $${n}`,
+    [...values, limit],
+  )) as MapRow[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    age: row.age === null ? null : Number(row.age),
+    lastSeen: row.last_seen,
+    photoUrl: row.has_photo
+      ? `/api/missing/${row.id}/photo`
+      : row.photo_external_url,
+    lat: Number(row.lat),
+    lng: Number(row.lng),
+    createdAt: Number(row.created_at),
+  }));
 }
