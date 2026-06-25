@@ -644,6 +644,94 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Puerto Rico",
+    countryCode: "PR",
+    organization: "Casa Venezuela Puerto Rico / Municipio de Aguadilla",
+    lines: [
+      {
+        type: "web",
+        label: "Coordinación de ayuda humanitaria",
+        href: "https://www.elnuevodia.com/noticias/locales/notas/casi-no-hemos-dormido-a-la-expectativa-venezolanos-en-puerto-rico-tras-los-terremotos-en-su-pais/",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Casa Venezuela Puerto Rico",
+        description:
+          "Organización venezolana en Puerto Rico coordinando ayuda humanitaria; El Nuevo Día reportó coordinación con el Departamento de Estado y aviso del Municipio de Aguadilla sobre un centro de acopio.",
+        href: "https://www.elnuevodia.com/noticias/locales/notas/casi-no-hemos-dormido-a-la-expectativa-venezolanos-en-puerto-rico-tras-los-terremotos-en-su-pais/",
+        source: "El Nuevo Día",
+        sourceHref:
+          "https://www.elnuevodia.com/noticias/locales/notas/casi-no-hemos-dormido-a-la-expectativa-venezolanos-en-puerto-rico-tras-los-terremotos-en-su-pais/",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
+    country: "Reino Unido",
+    countryCode: "GB",
+    organization: "British Red Cross / organizaciones humanitarias",
+    lines: [
+      {
+        type: "web",
+        label: "British Red Cross Disaster Fund",
+        href: "https://www.redcross.org.uk/",
+      },
+      {
+        type: "web",
+        label: "Save the Children UK",
+        href: "https://www.savethechildren.org.uk/how-you-can-help/emergencies/venezuela-earthquake",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "British Red Cross",
+        description:
+          "Apelación al Disaster Fund para apoyar a personas afectadas por los terremotos.",
+        href: "https://www.redcross.org.uk/",
+        source: "The Times",
+        sourceHref:
+          "https://www.thetimes.com/world/latin-america/article/venezuela-hit-by-powerful-back-to-back-earthquakes-pfjbxbvcz",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+      {
+        name: "Save the Children UK",
+        description:
+          "Respuesta para salud, protección infantil, refugio y alimentos con equipos y socios movilizados.",
+        href: "https://www.savethechildren.org.uk/how-you-can-help/emergencies/venezuela-earthquake",
+        source: "Save the Children UK",
+        sourceHref:
+          "https://www.savethechildren.org.uk/how-you-can-help/emergencies/venezuela-earthquake",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+      {
+        name: "Healing Venezuela",
+        description:
+          "Organización basada en Reino Unido que da soporte sanitario en Venezuela y abrió canales de donación para la emergencia.",
+        href: "https://healingvenezuela.org/",
+        source: "THE OBJECTIVE",
+        sourceHref:
+          "https://theobjective.com/internacional/2026-06-25/guia-ayuda-venezuela-espana-terremoto/",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+      {
+        name: "Islamic Relief UK",
+        description:
+          "Llamado de emergencia para apoyar a familias afectadas por el doble terremoto.",
+        href: "https://www.islamic-relief.org.uk/giving/appeals/venezuela-earthquake-appeal/",
+        source: "Islamic Relief UK",
+        sourceHref:
+          "https://www.islamic-relief.org.uk/giving/appeals/venezuela-earthquake-appeal/",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
     country: "Estados Unidos",
     countryCode: "US",
     organization: "Cruz Roja Americana / organizaciones locales",
@@ -732,6 +820,16 @@ const OFFICES: CountryOffice[] = [
           "https://www.univision.com/local/miami-wltv/donde-miami-recolecta-ayuda-para-afectados-terremoto-venezuela",
         updatedAt: "25 jun 2026",
       },
+      {
+        city: "Pineville, NC",
+        name: "The Latin Corner CLT",
+        address: "705 Main St, Pineville, NC 28134",
+        accepts:
+          "Pañales para niños y adultos, medicinas, alimentos no perecederos y suministros básicos.",
+        source: "Instagram",
+        sourceHref: "https://www.instagram.com/reel/DaBIm84zmmG/",
+        updatedAt: "25 jun 2026",
+      },
     ],
     shareChannels: [
       {
@@ -782,6 +880,8 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "America/Tegucigalpa": "HN",
   "America/Mexico_City": "MX",
   "America/Panama": "PA",
+  "America/Puerto_Rico": "PR",
+  "Europe/London": "GB",
   "America/New_York": "US",
   "America/Chicago": "US",
   "America/Denver": "US",
