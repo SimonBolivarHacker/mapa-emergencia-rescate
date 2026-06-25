@@ -335,6 +335,42 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Chile",
+    countryCode: "CL",
+    organization: "Gobierno de Chile / Venezolanos en Chile",
+    lines: [
+      {
+        type: "web",
+        label: "Cómo ayudar desde Chile",
+        href: "https://www.24horas.cl/internacional/noticias/terremoto-venezuela-campanas-desaparecidos-ayudar-chile",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Ayuda humanitaria desde Chile",
+        description:
+          "Chile informó coordinación de mecanismos de cooperación y envío de ayuda humanitaria urgente para las zonas afectadas.",
+        href: "https://www.24horas.cl/internacional/noticias/terremoto-venezuela-campanas-desaparecidos-ayudar-chile",
+        source: "24 Horas",
+        sourceHref:
+          "https://www.24horas.cl/internacional/noticias/terremoto-venezuela-campanas-desaparecidos-ayudar-chile",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+      {
+        name: "Venezolanos en Chile",
+        description:
+          "Agrupaciones venezolanas en Chile están difundiendo campañas solidarias y antecedentes para búsqueda de desaparecidos.",
+        href: "https://www.24horas.cl/internacional/noticias/terremoto-venezuela-campanas-desaparecidos-ayudar-chile",
+        source: "24 Horas",
+        sourceHref:
+          "https://www.24horas.cl/internacional/noticias/terremoto-venezuela-campanas-desaparecidos-ayudar-chile",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
     country: "Colombia",
     countryCode: "CO",
     organization: "Cruz Roja Colombiana",
@@ -1205,6 +1241,41 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Uruguay",
+    countryCode: "UY",
+    organization: "Venezolanos en Uruguay",
+    lines: [
+      {
+        type: "web",
+        label: "Campaña de recolección en Uruguay",
+        href: "https://www.instagram.com/venezolanosenuruguay/",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Venezolanos en Uruguay",
+        description:
+          "Campaña de recolección de donaciones impulsada por la comunidad venezolana en Uruguay para apoyar a afectados por la emergencia.",
+        href: "https://www.instagram.com/venezolanosenuruguay/",
+        source: "Venezolanos en Uruguay",
+        sourceHref: "https://www.instagram.com/venezolanosenuruguay/",
+        updatedAt: "25 jun 2026",
+        status: "social",
+      },
+      {
+        name: "Cobertura Canal 4 Uruguay",
+        description:
+          "Canal 4 reportó que la comunidad venezolana en Uruguay recibe donaciones tras el terremoto.",
+        href: "https://www.facebook.com/canal4uy/posts/-la-comunidad-de-venezolanos-en-uruguay-se-encuentra-recibiendo-donaciones-tras-/1367919068864666/",
+        source: "Canal 4 Uruguay",
+        sourceHref:
+          "https://www.facebook.com/canal4uy/posts/-la-comunidad-de-venezolanos-en-uruguay-se-encuentra-recibiendo-donaciones-tras-/1367919068864666/",
+        updatedAt: "25 jun 2026",
+        status: "social",
+      },
+    ],
+  },
+  {
     country: "Estados Unidos",
     countryCode: "US",
     organization: "Cruz Roja Americana / organizaciones locales",
@@ -1358,6 +1429,8 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "Australia/Brisbane": "AU",
   "Australia/Perth": "AU",
   "Europe/Zurich": "CH",
+  "America/Santiago": "CL",
+  "Pacific/Easter": "CL",
   "America/Bogota": "CO",
   "Europe/Prague": "CZ",
   "America/Toronto": "CA",
@@ -1383,6 +1456,7 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "Europe/London": "GB",
   "Europe/Stockholm": "SE",
   "Africa/Johannesburg": "ZA",
+  "America/Montevideo": "UY",
   "America/New_York": "US",
   "America/Chicago": "US",
   "America/Denver": "US",
