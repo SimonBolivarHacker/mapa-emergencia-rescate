@@ -7,7 +7,7 @@
  */
 
 import { hasDbEnv } from "../db";
-import { upsertExternalMissing } from "../missing";
+import { upsertExternalMissingBatch } from "../missing";
 import type { SourceAdapter, SyncResult } from "./types";
 import { enabledSources, getSource } from "./sources";
 
@@ -59,23 +59,23 @@ export async function runSync(
     });
     base.fetched = people.length;
 
-    for (const person of people) {
-      if (!person.name?.trim() || !person.externalId?.trim()) {
-        base.skipped++;
-        continue;
+    if (dryRun) {
+      // Sin escribir: contamos válidos (se procesarían) vs inválidos (se saltan).
+      for (const p of people) {
+        if (p.name?.trim() && p.externalId?.trim() && p.source?.trim()) {
+          base.inserted++;
+        } else {
+          base.skipped++;
+        }
       }
-      if (dryRun) {
-        base.inserted++; // en dry-run contamos como "se procesaría"
-        continue;
-      }
-      try {
-        const { inserted } = await upsertExternalMissing(person);
-        if (inserted) base.inserted++;
-        else base.updated++;
-      } catch {
-        base.errors++;
-      }
+      return finalize({ ...base, ok: true });
     }
+
+    const r = await upsertExternalMissingBatch(people);
+    base.inserted = r.inserted;
+    base.updated = r.updated;
+    base.skipped = r.skipped;
+    base.errors = r.errors;
 
     return finalize({ ...base, ok: true });
   } catch (err) {
