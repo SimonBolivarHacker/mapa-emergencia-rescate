@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import MissingPersonForm, {
   type MissingPersonPayload,
 } from "./MissingPersonForm";
+import MissingPersonDetail from "./MissingPersonDetail";
 
 interface MissingPerson {
   id: string;
@@ -37,6 +38,7 @@ export default function MissingPersons() {
   const [showForm, setShowForm] = useState(false);
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [persistent, setPersistent] = useState(true);
+  const [selected, setSelected] = useState<MissingPerson | null>(null);
 
   const fetchPeople = useCallback(async () => {
     setAdminToken(sessionStorage.getItem(ADMIN_STORAGE_KEY));
@@ -99,6 +101,7 @@ export default function MissingPersons() {
       if (!adminToken) return;
       const previous = people;
       setPeople((prev) => prev.filter((p) => p.id !== id));
+      setSelected((current) => (current?.id === id ? null : current));
       const res = await fetch(`/api/missing/${id}`, {
         method: "DELETE",
         headers: { "x-admin-token": adminToken },
@@ -168,24 +171,29 @@ export default function MissingPersons() {
               return (
                 <li
                   key={person.id}
-                  className="flex gap-3 rounded-xl border border-slate-200 p-3"
+                  className="relative overflow-hidden rounded-xl border border-slate-200 transition hover:border-slate-300 hover:shadow-sm"
                 >
-                  {person.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={person.photoUrl}
-                      alt={`Foto de ${person.name}`}
-                      loading="lazy"
-                      className="h-24 w-24 shrink-0 rounded-lg object-cover ring-1 ring-slate-200"
-                    />
-                  ) : (
-                    <div className="grid h-24 w-24 shrink-0 place-items-center rounded-lg bg-slate-100 text-3xl text-slate-400">
-                      🧍
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="font-semibold text-slate-900">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(person)}
+                    aria-label={`Ver detalle de ${person.name}`}
+                    className="flex w-full gap-3 p-3 text-left transition active:bg-slate-50"
+                  >
+                    {person.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={person.photoUrl}
+                        alt={`Foto de ${person.name}`}
+                        loading="lazy"
+                        className="h-24 w-24 shrink-0 rounded-lg object-cover ring-1 ring-slate-200"
+                      />
+                    ) : (
+                      <div className="grid h-24 w-24 shrink-0 place-items-center rounded-lg bg-slate-100 text-3xl text-slate-400">
+                        🧍
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="pr-6 font-semibold text-slate-900">
                         {person.name}
                         {person.age !== null && (
                           <span className="font-normal text-slate-500">
@@ -194,41 +202,45 @@ export default function MissingPersons() {
                           </span>
                         )}
                       </p>
-                      {adminToken && (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(person.id)}
-                          aria-label="Eliminar reporte"
-                          className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                    {person.lastSeen && (
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        📍 {person.lastSeen}
-                      </p>
-                    )}
-                    {person.description && (
-                      <p className="mt-1 line-clamp-3 text-xs text-slate-600">
-                        {person.description}
-                      </p>
-                    )}
-                    {person.contact &&
-                      (phone ? (
-                        <a
-                          href={`tel:${phone}`}
-                          className="mt-1 inline-block text-xs font-medium text-red-700 hover:underline"
-                        >
-                          📞 {person.contact}
-                        </a>
-                      ) : (
-                        <p className="mt-1 text-xs font-medium text-slate-700">
-                          {person.contact}
+                      {person.lastSeen && (
+                        <p className="mt-0.5 text-xs text-slate-600">
+                          📍 {person.lastSeen}
                         </p>
-                      ))}
-                  </div>
+                      )}
+                      {person.description && (
+                        <p className="mt-1 line-clamp-3 text-xs text-slate-600">
+                          {person.description}
+                        </p>
+                      )}
+                      {person.contact &&
+                        (phone ? (
+                          <a
+                            href={`tel:${phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 inline-block text-xs font-medium text-red-700 hover:underline"
+                          >
+                            📞 {person.contact}
+                          </a>
+                        ) : (
+                          <p className="mt-1 text-xs font-medium text-slate-700">
+                            {person.contact}
+                          </p>
+                        ))}
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Toca para ver más
+                      </p>
+                    </div>
+                  </button>
+                  {adminToken && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(person.id)}
+                      aria-label="Eliminar reporte"
+                      className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-md bg-white/80 text-slate-400 backdrop-blur hover:bg-red-50 hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  )}
                 </li>
               );
             })}
@@ -246,6 +258,13 @@ export default function MissingPersons() {
         <MissingPersonForm
           onCancel={() => setShowForm(false)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {selected && (
+        <MissingPersonDetail
+          person={selected}
+          onClose={() => setSelected(null)}
         />
       )}
     </section>
