@@ -1156,6 +1156,30 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Sudáfrica",
+    countryCode: "ZA",
+    organization: "Islamic Relief South Africa",
+    lines: [
+      {
+        type: "web",
+        label: "Islamic Relief SA - Venezuela Earthquake Appeal",
+        href: "https://islamic-relief.org.za/",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Islamic Relief South Africa",
+        description:
+          "Canal sudafricano con Venezuela Earthquake Appeal para ayuda humanitaria a familias afectadas.",
+        href: "https://islamic-relief.org.za/",
+        source: "Islamic Relief South Africa",
+        sourceHref: "https://islamic-relief.org.za/",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
     country: "Estados Unidos",
     countryCode: "US",
     organization: "Cruz Roja Americana / organizaciones locales",
@@ -1332,6 +1356,7 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "America/Puerto_Rico": "PR",
   "Europe/London": "GB",
   "Europe/Stockholm": "SE",
+  "Africa/Johannesburg": "ZA",
   "America/New_York": "US",
   "America/Chicago": "US",
   "America/Denver": "US",
