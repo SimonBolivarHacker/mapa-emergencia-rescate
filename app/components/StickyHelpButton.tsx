@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { psychologyHelpUrl } from "@/lib/site";
+import { trackEvent } from "./openpanel";
 
 function psychologyClickLabel(count: number): string {
   const n = count.toLocaleString("es-VE");
@@ -33,6 +34,9 @@ export default function StickyHelpButton() {
   }, []);
 
   const trackPsychologyClick = useCallback(() => {
+    trackEvent("psychology_help_requested", {
+      destination: psychologyIsExternal ? "external" : "mailto",
+    });
     fetch("/api/stats/psychology-help", {
       method: "POST",
       keepalive: true,
@@ -44,7 +48,7 @@ export default function StickyHelpButton() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [psychologyIsExternal]);
 
   useEffect(() => {
     if (!open) return;
@@ -100,6 +104,7 @@ export default function StickyHelpButton() {
             setOpen(false);
             trackPsychologyClick();
           }}
+          data-track="psychology_help_clicked"
           className="relative mt-3 flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
         >
           <span className="flex items-center gap-2">
@@ -128,6 +133,7 @@ export default function StickyHelpButton() {
           open ? "Cerrar menú de apoyo psicológico" : "Abrir menú de apoyo psicológico"
         }
         onClick={() => setOpen((value) => !value)}
+        data-track="psychology_menu_toggled"
         className={`relative flex min-h-12 max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-full bg-violet-600 px-3 py-3 text-xs font-semibold text-white shadow-lg transition hover:bg-violet-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 sm:max-w-none sm:px-4 sm:text-sm ${
           open ? "" : "animate-pulse-soft"
         }`}

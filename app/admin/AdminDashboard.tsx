@@ -11,6 +11,8 @@ import AdminLogin from "../components/AdminLogin";
 
 const ADMIN_STORAGE_KEY = "emergency:adminToken";
 const POLL_INTERVAL_MS = 7000;
+const OPENPANEL_CLIENT_ID = process.env.NEXT_PUBLIC_OPENPANEL_CLIENT_ID;
+const OPENPANEL_DASHBOARD_URL = process.env.NEXT_PUBLIC_OPENPANEL_DASHBOARD_URL;
 
 interface Report {
   id: string;
@@ -69,7 +71,7 @@ interface AdminData {
   people: Person[];
 }
 
-type Tab = "reports" | "chat" | "missing";
+type Tab = "analytics" | "reports" | "chat" | "missing";
 
 function timeAgo(ts: number): string {
   const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
@@ -128,7 +130,7 @@ export default function AdminDashboard() {
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [data, setData] = useState<AdminData | null>(null);
-  const [tab, setTab] = useState<Tab>("reports");
+  const [tab, setTab] = useState<Tab>("analytics");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -281,6 +283,16 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {OPENPANEL_DASHBOARD_URL && (
+              <a
+                href={OPENPANEL_DASHBOARD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+              >
+                OpenPanel
+              </a>
+            )}
             <Link
               href="/"
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -362,6 +374,7 @@ export default function AdminDashboard() {
         <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200">
           {(
             [
+              ["analytics", "Analytics"],
               ["reports", `Reportes (${data?.reports.length ?? 0})`],
               ["missing", `Desaparecidas (${data?.people.length ?? 0})`],
               ["chat", `Chat (${data?.messages.length ?? 0})`],
@@ -396,6 +409,82 @@ export default function AdminDashboard() {
         </div>
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {tab === "analytics" && (
+            <section className="p-6">
+              <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    OpenPanel
+                  </p>
+                  <h2 className="mt-1 text-xl font-bold text-slate-900">
+                    Dashboard de tráfico y usuarios en vivo
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Este panel interno administra reportes, personas y chat. Las
+                    métricas estilo Google Analytics van en OpenPanel: usuarios en
+                    tiempo real, visitantes por hora, páginas vistas, sesiones,
+                    funnels e interacciones.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {OPENPANEL_DASHBOARD_URL ? (
+                      <a
+                        href={OPENPANEL_DASHBOARD_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                      >
+                        Abrir OpenPanel
+                      </a>
+                    ) : (
+                      <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                        Falta NEXT_PUBLIC_OPENPANEL_DASHBOARD_URL
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Estado de integración
+                  </h3>
+                  <dl className="mt-3 space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">SDK instalado</dt>
+                      <dd className="font-semibold text-emerald-700">Sí</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">Proxy local</dt>
+                      <dd className="font-semibold text-emerald-700">/api/op</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">Client ID</dt>
+                      <dd
+                        className={
+                          OPENPANEL_CLIENT_ID
+                            ? "font-semibold text-emerald-700"
+                            : "font-semibold text-amber-700"
+                        }
+                      >
+                        {OPENPANEL_CLIENT_ID ? "Configurado" : "Pendiente"}
+                      </dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-slate-500">Dashboard URL</dt>
+                      <dd
+                        className={
+                          OPENPANEL_DASHBOARD_URL
+                            ? "font-semibold text-emerald-700"
+                            : "font-semibold text-amber-700"
+                        }
+                      >
+                        {OPENPANEL_DASHBOARD_URL ? "Configurada" : "Pendiente"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            </section>
+          )}
+
           {tab === "reports" && (
             <ul className="divide-y divide-slate-100">
               {filteredReports.length === 0 ? (

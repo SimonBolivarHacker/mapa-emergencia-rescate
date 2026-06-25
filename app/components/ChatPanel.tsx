@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLowBandwidthMode } from "./useLowBandwidthMode";
+import { trackEvent } from "./openpanel";
 
 interface ChatMessage {
   id: string;
@@ -99,6 +100,11 @@ export default function ChatPanel() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error ?? "No se pudo enviar.");
+        trackEvent("chat_message_sent", {
+          hasName: Boolean(name.trim()),
+          lengthBucket:
+            trimmed.length < 80 ? "short" : trimmed.length < 240 ? "medium" : "long",
+        });
         setText("");
         atBottomRef.current = true;
         if (data.message) {
@@ -211,6 +217,7 @@ export default function ChatPanel() {
             />
             <button
               type="submit"
+              data-track="chat_send_clicked"
               disabled={sending || !text.trim()}
               className="h-[42px] shrink-0 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
