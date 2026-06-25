@@ -68,7 +68,6 @@ export default function EmergencyApp() {
     POLL_INTERVAL_MS,
     LOW_BANDWIDTH_POLL_INTERVAL_MS,
   );
-  const [interactiveMapEnabled, setInteractiveMapEnabled] = useState(false);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
   const [persistent, setPersistent] = useState(true);
   const [filter, setFilter] = useState<ReportType | "all">("all");
@@ -98,12 +97,6 @@ export default function EmergencyApp() {
   } | null>(null);
 
   const isAdmin = Boolean(adminToken);
-
-  useEffect(() => {
-    if (network.isConstrained) return;
-    const id = setTimeout(() => setInteractiveMapEnabled(true), 0);
-    return () => clearTimeout(id);
-  }, [network.isConstrained]);
 
   // Refresca el reloj cada 30 s para que las etiquetas "hace X min" se mantengan
   // al día sin tener que recargar los reportes desde el servidor.
@@ -196,23 +189,6 @@ export default function EmergencyApp() {
 
   const handlePick = useCallback((lat: number, lng: number) => {
     setDraft({ lat, lng });
-  }, []);
-
-  const handleReportFromLocation = useCallback(() => {
-    if (!("geolocation" in navigator)) {
-      setDraft({ lat: CARACAS[0], lng: CARACAS[1] });
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setDraft({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }),
-      () => setDraft({ lat: CARACAS[0], lng: CARACAS[1] }),
-      { enableHighAccuracy: false, timeout: 8_000, maximumAge: 300_000 },
-    );
   }, []);
 
   const handleAddressSelect = useCallback((result: GeocodeResult) => {
@@ -362,65 +338,21 @@ export default function EmergencyApp() {
             bias={focus ? { lat: focus.lat, lng: focus.lng } : AFFECTED_CENTER}
           />
           <div className="relative h-[520px] overflow-hidden rounded-2xl border border-slate-200 shadow-sm lg:h-[640px]">
-            {interactiveMapEnabled ? (
-              <>
-                <MapView
-                  reports={reports}
-                  draft={draft}
-                  onPick={handlePick}
-                  onResolve={handleResolve}
-                  onConfirm={handleConfirm}
-                  confirmed={confirmed}
-                  isAdmin={isAdmin}
-                  focus={focus}
-                  center={CARACAS}
-                  zoom={12}
-                />
-                <div className="pointer-events-none absolute left-1/2 top-3 z-[1000] -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-1.5 text-center text-xs font-medium text-white shadow">
-                  Toca un punto del mapa para reportar
-                </div>
-              </>
-            ) : (
-              <div className="flex h-full flex-col justify-between bg-slate-50 p-5">
-                <div>
-                  <p className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
-                    Modo bajo consumo
-                  </p>
-                  <h3 className="mt-4 text-xl font-bold text-slate-900">
-                    El mapa interactivo está pausado para cargar más rápido.
-                  </h3>
-                  <p className="mt-2 max-w-xl text-sm text-slate-600">
-                    Puedes reportar usando tu ubicación sin descargar el mapa ni
-                    los mosaicos. Si necesitas ver marcadores, carga el mapa
-                    manualmente.
-                  </p>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={handleReportFromLocation}
-                    className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
-                  >
-                    Reportar con mi ubicación
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDraft({ lat: CARACAS[0], lng: CARACAS[1] })}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Reportar sin GPS
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInteractiveMapEnabled(true)}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cargar mapa
-                  </button>
-                </div>
-              </div>
-            )}
+            <MapView
+              reports={reports}
+              draft={draft}
+              onPick={handlePick}
+              onResolve={handleResolve}
+              onConfirm={handleConfirm}
+              confirmed={confirmed}
+              isAdmin={isAdmin}
+              focus={focus}
+              center={CARACAS}
+              zoom={12}
+            />
+            <div className="pointer-events-none absolute left-1/2 top-3 z-[1000] -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-1.5 text-center text-xs font-medium text-white shadow">
+              Toca un punto del mapa para reportar
+            </div>
           </div>
         </div>
 
