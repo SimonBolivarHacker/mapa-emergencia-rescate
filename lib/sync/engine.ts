@@ -10,7 +10,7 @@ import { hasDbEnv } from "../db";
 import { upsertExternalMissingBatch } from "../missing";
 import type { SourceAdapter, SyncResult, ExternalPerson } from "./types";
 import { enabledSources, getSource } from "./sources";
-import { getSyncCursor, setSyncCursor } from "./state";
+import { getSyncCursor, setSyncCursor, recordSyncRun, type SyncTrigger } from "./state";
 
 const DEFAULT_USER_AGENT =
   "MapaEmergenciaVE/1.0 (+https://terremotovenezuela.app)";
@@ -30,6 +30,8 @@ export interface RunOptions {
   dryRun?: boolean;
   /** Tope de registros a procesar por fuente. */
   limit?: number;
+  /** Origen de la corrida (para la bitácora). */
+  trigger?: SyncTrigger;
 }
 
 export interface ChunkOptions {
@@ -37,6 +39,8 @@ export interface ChunkOptions {
   pagesPerRun?: number;
   /** Presupuesto de tiempo (ms): se corta al excederlo. */
   timeBudgetMs?: number;
+  /** Origen de la corrida (para la bitácora). */
+  trigger?: SyncTrigger;
 }
 
 function userAgent(): string {
@@ -115,9 +119,12 @@ export async function runAllSources(
         .filter((a): a is SourceAdapter => Boolean(a))
     : enabledSources();
 
+  const trigger: SyncTrigger = opts.trigger ?? "manual";
   const results: SyncResult[] = [];
   for (const adapter of adapters) {
-    results.push(await runSync(adapter, opts));
+    const result = await runSync(adapter, opts);
+    if (!result.dryRun) await recordSyncRun(result, trigger);
+    results.push(result);
   }
   return results;
 }
@@ -268,11 +275,14 @@ export async function runAllSourcesChunked(
         .filter((a): a is SourceAdapter => Boolean(a))
     : enabledSources();
 
+  const trigger: SyncTrigger = opts.trigger ?? "manual";
   const results: SyncResult[] = [];
   for (const adapter of adapters) {
-    results.push(
-      adapter.fetchPage ? await runSyncChunked(adapter, opts) : await runSync(adapter),
-    );
+    const result = adapter.fetchPage
+      ? await runSyncChunked(adapter, opts)
+      : await runSync(adapter);
+    await recordSyncRun(result, trigger);
+    results.push(result);
   }
   return results;
 }

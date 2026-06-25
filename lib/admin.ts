@@ -32,4 +32,18 @@ export function isAdminRequest(request: Request): boolean {
   return isValidAdminPassword(request.headers.get(ADMIN_HEADER));
 }
 
+/**
+ * Valida una petición de cron de Vercel. Vercel envía
+ * `Authorization: Bearer $CRON_SECRET` automáticamente cuando `CRON_SECRET`
+ * está configurada. Un admin con su token también puede dispararlo.
+ */
+export function isCronRequest(request: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const auth = request.headers.get("authorization");
+    if (auth && safeEqual(auth, `Bearer ${secret}`)) return true;
+  }
+  return isAdminRequest(request);
+}
+
 export { ADMIN_HEADER };

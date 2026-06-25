@@ -44,9 +44,32 @@ interface Person {
   resolvedAt?: number | null;
   createdAt: number;
 }
+interface SyncRun {
+  source: string;
+  trigger: string | null;
+  ok: boolean;
+  fetched: number;
+  inserted: number;
+  updated: number;
+  errors: number;
+  fromPage: number | null;
+  toPage: number | null;
+  cycleCompleted: boolean | null;
+  error: string | null;
+  durationMs: number;
+  startedAt: number;
+}
+interface SyncStateRow {
+  source: string;
+  nextPage: number;
+  totalPages: number | null;
+  lastRunAt: number | null;
+  lastCycleCompletedAt: number | null;
+}
 interface AdminData {
   generatedAt: number;
   persistent: boolean;
+  sync?: { runs: SyncRun[]; state: SyncStateRow[] };
   stats: {
     reports: {
       total: number;
@@ -131,6 +154,7 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("reports");
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     setToken(sessionStorage.getItem(ADMIN_STORAGE_KEY));
@@ -217,6 +241,23 @@ export default function AdminDashboard() {
     },
     [token],
   );
+
+  const runSyncNow = useCallback(async () => {
+    const current = sessionStorage.getItem(ADMIN_STORAGE_KEY);
+    if (!current || syncing) return;
+    setSyncing(true);
+    try {
+      await fetch("/api/sync/run?mode=chunk", {
+        method: "POST",
+        headers: { "x-admin-token": current },
+      });
+      await fetchData();
+    } catch {
+      // se refleja en el próximo poll
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, fetchData]);
 
   const filteredReports = useMemo(() => {
     if (!data) return [];
@@ -358,6 +399,73 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              🔄 Sincronización de fuentes
+            </h2>
+            <button
+              type="button"
+              onClick={runSyncNow}
+              disabled={syncing}
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+            </button>
+          </div>
+
+          {data?.sync?.state && data.sync.state.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.sync.state.map((s) => (
+                <span
+                  key={s.source}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600"
+                >
+                  <span className="font-medium text-slate-800">{s.source}</span>
+                  <span>
+                    · pág {s.nextPage}
+                    {s.totalPages ? `/${s.totalPages}` : ""}
+                  </span>
+                  {s.lastRunAt && (
+                    <span className="text-slate-400">· {timeAgo(s.lastRunAt)}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {data?.sync?.runs && data.sync.runs.length > 0 ? (
+            <ul className="mt-3 divide-y divide-slate-100 text-xs">
+              {data.sync.runs.map((r, i) => (
+                <li
+                  key={i}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5"
+                >
+                  <span className={r.ok ? "text-emerald-600" : "text-red-600"}>
+                    {r.ok ? "✓" : "✕"}
+                  </span>
+                  <span className="text-slate-400">{timeAgo(r.startedAt)}</span>
+                  <span className="rounded bg-slate-100 px-1.5 text-slate-600">
+                    {r.trigger ?? "?"}
+                  </span>
+                  <span className="text-slate-700">
+                    pág {r.fromPage ?? "?"}–{r.toPage ?? "?"} · +{r.inserted} nuevos
+                    {" / "}
+                    {r.updated} act.
+                    {r.errors > 0 && ` · ${r.errors} err`}
+                    {r.cycleCompleted && " · ciclo ✓"}
+                  </span>
+                  {r.error && <span className="text-red-600">{r.error}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs text-slate-500">
+              Aún no hay corridas registradas.
+            </p>
+          )}
+        </section>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200">
           {(

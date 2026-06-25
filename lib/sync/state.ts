@@ -4,6 +4,7 @@
  */
 
 import { getSql, hasDbEnv } from "../db";
+import type { SyncResult } from "./types";
 
 export interface SyncCursor {
   /** Próxima página a procesar (1-based). */
@@ -27,6 +28,29 @@ function ensureStateSchema(): Promise<void> {
           updated_at BIGINT NOT NULL
         )
       `;
+      // Bitácora de corridas (observabilidad).
+      await sql`
+        CREATE TABLE IF NOT EXISTS sync_runs (
+          id BIGSERIAL PRIMARY KEY,
+          source TEXT NOT NULL,
+          trigger TEXT,
+          ok BOOLEAN NOT NULL,
+          fetched INTEGER NOT NULL DEFAULT 0,
+          inserted INTEGER NOT NULL DEFAULT 0,
+          updated INTEGER NOT NULL DEFAULT 0,
+          skipped INTEGER NOT NULL DEFAULT 0,
+          errors INTEGER NOT NULL DEFAULT 0,
+          from_page INTEGER,
+          to_page INTEGER,
+          next_page INTEGER,
+          cycle_completed BOOLEAN,
+          error TEXT,
+          duration_ms INTEGER NOT NULL DEFAULT 0,
+          started_at BIGINT NOT NULL,
+          finished_at BIGINT NOT NULL
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS idx_sync_runs_started ON sync_runs (started_at DESC)`;
     })();
   }
   return _stateSchemaReady;
@@ -69,4 +93,108 @@ export async function setSyncCursor(
       last_cycle_completed_at = COALESCE(EXCLUDED.last_cycle_completed_at, sync_state.last_cycle_completed_at),
       updated_at = EXCLUDED.updated_at
   `;
+}
+
+export type SyncTrigger = "cron" | "manual";
+
+/** Registra una corrida en la bitácora (best-effort: no rompe el sync si falla). */
+export async function recordSyncRun(
+  result: SyncResult,
+  trigger: SyncTrigger,
+): Promise<void> {
+  if (!hasDbEnv()) return;
+  try {
+    await ensureStateSchema();
+    await getSql()`
+      INSERT INTO sync_runs (
+        source, trigger, ok, fetched, inserted, updated, skipped, errors,
+        from_page, to_page, next_page, cycle_completed, error,
+        duration_ms, started_at, finished_at
+      ) VALUES (
+        ${result.source}, ${trigger}, ${result.ok}, ${result.fetched},
+        ${result.inserted}, ${result.updated}, ${result.skipped}, ${result.errors},
+        ${result.fromPage ?? null}, ${result.toPage ?? null}, ${result.nextPage ?? null},
+        ${result.cycleCompleted ?? null}, ${result.error ?? null},
+        ${result.durationMs}, ${result.startedAt}, ${result.finishedAt}
+      )
+    `;
+  } catch {
+    // la observabilidad no debe tumbar el sync
+  }
+}
+
+export interface SyncRunRow {
+  source: string;
+  trigger: string | null;
+  ok: boolean;
+  fetched: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+  fromPage: number | null;
+  toPage: number | null;
+  nextPage: number | null;
+  cycleCompleted: boolean | null;
+  error: string | null;
+  durationMs: number;
+  startedAt: number;
+  finishedAt: number;
+}
+
+/** Últimas corridas (para el panel admin). */
+export async function listSyncRuns(limit = 20): Promise<SyncRunRow[]> {
+  if (!hasDbEnv()) return [];
+  await ensureStateSchema();
+  const n = Math.min(Math.max(Math.trunc(limit), 1), 100);
+  const rows = (await getSql()`
+    SELECT source, trigger, ok, fetched, inserted, updated, skipped, errors,
+           from_page, to_page, next_page, cycle_completed, error,
+           duration_ms, started_at, finished_at
+    FROM sync_runs ORDER BY started_at DESC LIMIT ${n}
+  `) as Record<string, unknown>[];
+  return rows.map((r) => ({
+    source: String(r.source),
+    trigger: (r.trigger as string) ?? null,
+    ok: Boolean(r.ok),
+    fetched: Number(r.fetched),
+    inserted: Number(r.inserted),
+    updated: Number(r.updated),
+    skipped: Number(r.skipped),
+    errors: Number(r.errors),
+    fromPage: r.from_page === null ? null : Number(r.from_page),
+    toPage: r.to_page === null ? null : Number(r.to_page),
+    nextPage: r.next_page === null ? null : Number(r.next_page),
+    cycleCompleted: r.cycle_completed === null ? null : Boolean(r.cycle_completed),
+    error: (r.error as string) ?? null,
+    durationMs: Number(r.duration_ms),
+    startedAt: Number(r.started_at),
+    finishedAt: Number(r.finished_at),
+  }));
+}
+
+export interface SyncStateRow {
+  source: string;
+  nextPage: number;
+  totalPages: number | null;
+  lastRunAt: number | null;
+  lastCycleCompletedAt: number | null;
+}
+
+/** Cursor actual de cada fuente (para el panel admin). */
+export async function listSyncState(): Promise<SyncStateRow[]> {
+  if (!hasDbEnv()) return [];
+  await ensureStateSchema();
+  const rows = (await getSql()`
+    SELECT source, next_page, total_pages, last_run_at, last_cycle_completed_at
+    FROM sync_state ORDER BY source
+  `) as Record<string, unknown>[];
+  return rows.map((r) => ({
+    source: String(r.source),
+    nextPage: Number(r.next_page),
+    totalPages: r.total_pages === null ? null : Number(r.total_pages),
+    lastRunAt: r.last_run_at === null ? null : Number(r.last_run_at),
+    lastCycleCompletedAt:
+      r.last_cycle_completed_at === null ? null : Number(r.last_cycle_completed_at),
+  }));
 }
