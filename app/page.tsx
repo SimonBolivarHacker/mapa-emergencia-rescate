@@ -1,5 +1,6 @@
 import EmergencyApp from "./components/EmergencyApp";
 import ShareButton from "./components/ShareButton";
+import ChatPanel from "./components/ChatPanel";
 import { REPORT_TYPES, type ReportType } from "@/lib/types";
 
 const STEPS = [
@@ -107,6 +108,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <ChatPanel />
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-6 text-center text-xs text-slate-500">

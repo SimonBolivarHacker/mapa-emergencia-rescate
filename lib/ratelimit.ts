@@ -1,5 +1,5 @@
 const memoryHits = new Map<string, number[]>();
-const LIMIT = 8;
+const DEFAULT_LIMIT = 8;
 const WINDOW_MS = 60_000;
 
 /**
@@ -10,12 +10,15 @@ const WINDOW_MS = 60_000;
  * spam puntual es suficiente; la protección principal ante tráfico masivo es
  * la caché de CDN sobre el endpoint de lectura.
  */
-export async function checkRateLimit(identifier: string): Promise<boolean> {
+export async function checkRateLimit(
+  identifier: string,
+  limit: number = DEFAULT_LIMIT,
+): Promise<boolean> {
   const now = Date.now();
   const hits = (memoryHits.get(identifier) ?? []).filter(
     (ts) => now - ts < WINDOW_MS,
   );
-  if (hits.length >= LIMIT) {
+  if (hits.length >= limit) {
     memoryHits.set(identifier, hits);
     return false;
   }

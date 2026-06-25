@@ -1,20 +1,10 @@
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { getSql, hasDbEnv } from "./db";
 import {
   REPORT_TYPE_KEYS,
   type EmergencyReport,
   type NewReport,
   type ReportType,
 } from "./types";
-
-function hasDbEnv(): boolean {
-  return Boolean(process.env.DATABASE_URL);
-}
-
-let _sql: NeonQueryFunction<false, false> | null = null;
-function getSql(): NeonQueryFunction<false, false> {
-  if (!_sql) _sql = neon(process.env.DATABASE_URL!);
-  return _sql;
-}
 
 let _schemaReady: Promise<void> | null = null;
 function ensureSchema(): Promise<void> {
