@@ -66,6 +66,23 @@ interface SyncStateRow {
   lastRunAt: number | null;
   lastCycleCompletedAt: number | null;
 }
+interface DuplicateGroup {
+  name: string;
+  count: number;
+  distinctAges: number;
+  distinctLocations: number;
+  classification: "same-person" | "homonyms";
+}
+interface DuplicateReport {
+  totalRows: number;
+  duplicateGroups: number;
+  collapsibleRows: number;
+  samePersonGroups: number;
+  samePersonCollapsible: number;
+  homonymGroups: number;
+  topGroups: DuplicateGroup[];
+  generatedAt: number;
+}
 interface AdminData {
   generatedAt: number;
   persistent: boolean;
@@ -155,6 +172,9 @@ export default function AdminDashboard() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [dupReport, setDupReport] = useState<DuplicateReport | null>(null);
+  const [loadingDup, setLoadingDup] = useState(false);
+  const [dupOpen, setDupOpen] = useState(false);
 
   useEffect(() => {
     setToken(sessionStorage.getItem(ADMIN_STORAGE_KEY));
@@ -258,6 +278,26 @@ export default function AdminDashboard() {
       setSyncing(false);
     }
   }, [syncing, fetchData]);
+
+  const loadDuplicates = useCallback(async () => {
+    const current = sessionStorage.getItem(ADMIN_STORAGE_KEY);
+    if (!current || loadingDup) return;
+    setLoadingDup(true);
+    try {
+      const res = await fetch("/api/sync/duplicates?limit=50", {
+        headers: { "x-admin-token": current },
+        cache: "no-store",
+      });
+      if (res.ok) {
+        setDupReport(await res.json());
+        setDupOpen(true);
+      }
+    } catch {
+      // se puede reintentar
+    } finally {
+      setLoadingDup(false);
+    }
+  }, [loadingDup]);
 
   const filteredReports = useMemo(() => {
     if (!data) return [];
@@ -465,6 +505,93 @@ export default function AdminDashboard() {
               Aún no hay corridas registradas.
             </p>
           )}
+
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                🔎 Reporte de posibles duplicados
+              </h3>
+              <div className="flex items-center gap-2">
+                {dupReport && (
+                  <button
+                    type="button"
+                    onClick={() => setDupOpen((v) => !v)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    {dupOpen ? "▲ Ocultar" : "▼ Mostrar"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={loadDuplicates}
+                  disabled={loadingDup}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {loadingDup ? "Analizando…" : dupReport ? "Regenerar" : "Generar reporte"}
+                </button>
+              </div>
+            </div>
+
+            {dupReport && dupOpen && (
+              <div className="mt-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MetricCard
+                    label="Grupos con duplicados"
+                    value={dupReport.duplicateGroups}
+                    sub={`de ${dupReport.totalRows} registros`}
+                  />
+                  <MetricCard
+                    label="Probable misma persona"
+                    value={dupReport.samePersonGroups}
+                    sub={`~${dupReport.samePersonCollapsible} filas colapsables`}
+                    accent="#16a34a"
+                  />
+                  <MetricCard
+                    label="Posibles homónimos"
+                    value={dupReport.homonymGroups}
+                    sub="revisar a mano (no agrupar)"
+                    accent="#dc2626"
+                  />
+                  <MetricCard
+                    label="Filas colapsables (techo)"
+                    value={dupReport.collapsibleRows}
+                    sub="si se colapsara todo"
+                  />
+                </div>
+
+                <ul className="mt-3 max-h-96 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100 text-xs">
+                  {dupReport.topGroups.map((g, i) => (
+                    <li
+                      key={i}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5"
+                    >
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                          g.classification === "same-person"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {g.classification === "same-person"
+                          ? "misma persona"
+                          : "homónimos"}
+                      </span>
+                      <span className="font-medium text-slate-900">{g.name}</span>
+                      <span className="text-slate-500">
+                        {g.count} registros · {g.distinctAges} edad(es) ·{" "}
+                        {g.distinctLocations} ubicación(es)
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Solo detección — no se modifica ni agrupa nada todavía.
+                  &quot;misma persona&quot; = edad consistente; &quot;homónimos&quot;
+                  = varias edades (probablemente personas distintas).
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200">
