@@ -1180,6 +1180,31 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Turquía",
+    countryCode: "TR",
+    organization: "Türk Kızılay",
+    lines: [
+      {
+        type: "web",
+        label: "Türk Kızılay - apoyo a Venezuela",
+        href: "https://www.aa.com.tr/tr/gundem/turk-kizilaydan-venezuela-kizilhacina-yardim-teklifi/3977735",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Türk Kızılay",
+        description:
+          "Media Luna Roja Turca en coordinación con la Cruz Roja Venezolana y la IFRC; reportó disponibilidad para enviar apoyo humanitario si se requiere.",
+        href: "https://www.aa.com.tr/tr/gundem/turk-kizilaydan-venezuela-kizilhacina-yardim-teklifi/3977735",
+        source: "Anadolu Ajansı",
+        sourceHref:
+          "https://www.aa.com.tr/tr/gundem/turk-kizilaydan-venezuela-kizilhacina-yardim-teklifi/3977735",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
     country: "Estados Unidos",
     countryCode: "US",
     organization: "Cruz Roja Americana / organizaciones locales",
@@ -1354,6 +1379,7 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "Pacific/Auckland": "NZ",
   "America/Panama": "PA",
   "America/Puerto_Rico": "PR",
+  "Europe/Istanbul": "TR",
   "Europe/London": "GB",
   "Europe/Stockholm": "SE",
   "Africa/Johannesburg": "ZA",
