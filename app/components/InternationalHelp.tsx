@@ -7,7 +7,6 @@ import {
   Clock,
   ExternalLink,
   Globe2,
-  HeartHandshake,
   Mail,
   Megaphone,
   MapPin,
@@ -532,6 +531,14 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
 
 const COUNTRY_STORAGE_KEY = "apoyo-global-country-code";
 
+function getCountryFlag(countryCode: string) {
+  return countryCode
+    .toUpperCase()
+    .replace(/./g, (character) =>
+      String.fromCodePoint(127397 + character.charCodeAt(0)),
+    );
+}
+
 function getSavedCountryCode() {
   if (typeof window === "undefined") {
     return null;
@@ -592,8 +599,11 @@ function OfficeCard({
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-red-50 text-red-700 ring-1 ring-red-100">
-          <MapPin className="h-5 w-5" aria-hidden />
+        <span
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-slate-50 text-3xl ring-1 ring-slate-200"
+          aria-hidden
+        >
+          {getCountryFlag(office.countryCode)}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-slate-950">{office.country}</h3>
@@ -821,15 +831,18 @@ export default function InternationalHelp() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid gap-5 lg:grid-cols-[1fr_22rem] lg:items-end">
             <div className="flex items-start gap-4">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-700 text-white">
-                <HeartHandshake className="h-6 w-6" aria-hidden />
+              <span
+                className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-slate-50 text-4xl ring-1 ring-slate-200"
+                aria-hidden
+              >
+                {getCountryFlag(selectedOffice.countryCode)}
               </span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-red-700">
                   Apoyo global
                 </p>
                 <h2 className="mt-1 text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">
-                  Encuentra ayuda y puntos de donación desde tu país
+                  Ayuda para Venezuela desde {selectedOffice.country}
                 </h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-700">
                   Te mostramos solo la información local del país detectado para
@@ -838,19 +851,23 @@ export default function InternationalHelp() {
                 </p>
               </div>
             </div>
-            <label className="block">
+            <label className="rounded-xl border border-red-100 bg-red-50/70 p-4">
               <span className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-800">
-                <span>País</span>
+                <span>¿Este es tu país para donar?</span>
                 {detectedOffice ? (
                   <span className="text-xs font-medium text-slate-500">
                     Detectado: {detectedOffice.country}
                   </span>
                 ) : null}
               </span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-600">
+                Si estás en otro lugar o quieres buscar puntos de otro país,
+                cámbialo aquí.
+              </span>
               <select
                 value={selectedCountryCode}
                 onChange={(event) => handleCountryChange(event.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 shadow-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 shadow-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-200"
               >
                 {OFFICES.map((office) => (
                   <option key={office.countryCode} value={office.countryCode}>
