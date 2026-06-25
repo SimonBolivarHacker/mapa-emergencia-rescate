@@ -1,15 +1,84 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CONTACT_EMAIL, contactMailto, psychologyHelpUrl } from "@/lib/site";
+
+function psychologyClickLabel(count: number): string {
+  const n = count.toLocaleString("es-VE");
+  return count === 1 ? `${n} persona` : `${n} personas`;
+}
 
 export default function StickyHelpButton() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [clickCount, setClickCount] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const psychologyUrl = psychologyHelpUrl();
   const psychologyIsExternal = !psychologyUrl.startsWith("mailto:");
+
+  useEffect(() => {
+    let scrolled = false;
+    let timerDone = false;
+    let cancelled = false;
+
+    const reveal = () => {
+      if (!cancelled && scrolled && timerDone) {
+        setVisible(true);
+      }
+    };
+
+    const onScroll = () => {
+      if (window.scrollY > 48) {
+        scrolled = true;
+        reveal();
+      }
+    };
+
+    const timer = window.setTimeout(() => {
+      timerDone = true;
+      reveal();
+    }, 5000);
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats/psychology-help")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { count?: number } | null) => {
+        if (!cancelled && typeof data?.count === "number") {
+          setClickCount(data.count);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const trackPsychologyClick = useCallback(() => {
+    fetch("/api/stats/psychology-help", {
+      method: "POST",
+      keepalive: true,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { count?: number } | null) => {
+        if (typeof data?.count === "number") {
+          setClickCount(data.count);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +105,13 @@ export default function StickyHelpButton() {
   return (
     <div
       ref={rootRef}
-      className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] right-3 z-[1900] flex flex-col items-end gap-3 md:bottom-[max(1rem,env(safe-area-inset-bottom))] md:right-4"
+      aria-hidden={!visible}
+      inert={!visible ? true : undefined}
+      className={`fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] right-3 z-[1900] flex flex-col items-end gap-3 transition-all duration-500 ease-out md:bottom-[max(1rem,env(safe-area-inset-bottom))] md:right-4 ${
+        visible
+          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-3 scale-95 opacity-0"
+      }`}
     >
       <div
         id="sticky-help-menu"
@@ -61,11 +136,21 @@ export default function StickyHelpButton() {
           href={psychologyUrl}
           target={psychologyIsExternal ? "_blank" : undefined}
           rel={psychologyIsExternal ? "noopener noreferrer" : undefined}
-          onClick={() => setOpen(false)}
-          className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
+          onClick={() => {
+            setOpen(false);
+            trackPsychologyClick();
+          }}
+          className="relative mt-3 flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-500"
         >
-          <span aria-hidden>💜</span>
-          Solicitar cita psicológica (Calma)
+          <span className="flex items-center gap-2">
+            <span aria-hidden>💜</span>
+            Solicitar cita psicológica (Calma)
+          </span>
+          {clickCount !== null && clickCount > 0 ? (
+            <span className="text-[10px] font-medium text-violet-200">
+              {psychologyClickLabel(clickCount)} han pedido cita
+            </span>
+          ) : null}
         </a>
 
         <a
