@@ -127,17 +127,19 @@ export default function ChatPanel() {
     <section id="chat" className="mx-auto w-full max-w-7xl px-4 pb-14">
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-lg font-bold text-slate-900">
-          💬 Chat de la comunidad
+          🤝 Espacio de voluntarios
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Coordina, comparte información y pide ayuda. Sé respetuoso: no compartas
-          datos sensibles ni difundas rumores sin confirmar.
+          Espacio de intercambio de información entre voluntarios. Coordínense,
+          compartan información verificada y ofrezcan o pidan apoyo. Sean
+          respetuosos: no compartan datos sensibles ni difundan rumores sin
+          confirmar.
         </p>
 
         <div
           ref={listRef}
           onScroll={handleScroll}
-          className="mt-4 h-[360px] space-y-3 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50 p-3"
+          className="mt-4 h-[60vh] max-h-[420px] min-h-[280px] space-y-3 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50 p-3 sm:h-[400px] sm:max-h-none"
         >
           {messages.length === 0 ? (
             <p className="grid h-full place-items-center text-sm text-slate-400">
@@ -167,7 +169,7 @@ export default function ChatPanel() {
                     type="button"
                     onClick={() => handleDelete(message.id)}
                     aria-label="Borrar mensaje"
-                    className="mt-1 shrink-0 rounded-md px-1.5 py-0.5 text-xs text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                    className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md text-base text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                   >
                     ×
                   </button>
@@ -204,7 +206,7 @@ export default function ChatPanel() {
             <button
               type="submit"
               disabled={sending || !text.trim()}
-              className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              className="h-[42px] shrink-0 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
             >
               {sending ? "…" : "Enviar"}
             </button>
