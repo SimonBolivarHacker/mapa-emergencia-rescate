@@ -14,11 +14,13 @@ secuencial): **~123 ms/llamada**. Por lo tanto:
 | --- | --- | --- |
 | Uno por uno (actual) | 43.700 | **~90 min** ❌ (excede cualquier límite serverless) |
 | Lotes de 500 | ~88 | **~11 s** ✅ |
+| Lotes de 1.000 | ~44 | **~5 s** ✅ |
 
 ## Decisión
 
 Implementar `upsertExternalMissingBatch(people)` con **INSERT multi-fila +
-`ON CONFLICT (source, external_id)`**, en lotes de **500** filas.
+`ON CONFLICT (source, external_id)`**, en lotes de **1.000** filas (tamaño
+configurable; clamp de seguridad).
 
 Reglas (validadas en Postgres local):
 
@@ -26,9 +28,13 @@ Reglas (validadas en Postgres local):
   el último. Postgres falla si una misma clave aparece dos veces en el mismo
   `INSERT ... ON CONFLICT` (`command cannot affect row a second time`). El feed
   vivo + paginación por offset produce solapes, así que esto es obligatorio.
-- **Presupuesto de parámetros**: 14 columnas × 500 filas = 7.000 parámetros, muy
-  por debajo del tope de Postgres (65.535). No subir el lote por encima de ~4.600
-  filas.
+- **Presupuesto de parámetros**: 14 columnas × 1.000 filas = 14.000 parámetros,
+  por debajo del tope de Postgres (65.535). Techo duro ~4.600 filas/lote.
+- **Semántica idéntica al upsert de una fila**: `EXCLUDED.*` para los campos que
+  siempre reflejan la fuente; `COALESCE(existing, EXCLUDED)` (first-write-wins)
+  para `photo_external_url`/`source`/`source_url`; `COALESCE(EXCLUDED, existing)`
+  para `resolution_note`/`resolved_at`. `upsertExternalMissing` (una fila) pasa
+  a ser un wrapper que delega en el batch (una sola fuente de verdad del SQL).
 - `RETURNING (xmax = 0) AS inserted` para contar insertados vs actualizados.
 - Un lote que falla cuenta como error y **no** tumba el resto de la corrida.
 

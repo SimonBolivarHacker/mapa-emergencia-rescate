@@ -277,9 +277,10 @@ lotes baja a segundos.
 
 ### Fase 2.5 — Ejecución por chunks
 
-Con el upsert resuelto, el costo pasa a **traer ~437 páginas** (~90 s con pausas)
-+ escribir (~11 s). Cabe en una invocación con `maxDuration = 300`, pero la API
-es flaky bajo carga. Para robustez:
+Con el upsert resuelto, el costo pasa a **traer ~437 páginas**: medido ~10 s por
+20 páginas → **~215 s** el scan completo (el write batched es ~5 s). Roza el
+`maxDuration = 300` y la API es flaky bajo carga, así que un solo invoke NO es
+confiable. Para robustez:
 
 - Cursor por fuente en `sync_state` (última página / watermark `updatedAt`).
 - Cada tick de cron procesa un **rango acotado de páginas** y avanza el cursor;
