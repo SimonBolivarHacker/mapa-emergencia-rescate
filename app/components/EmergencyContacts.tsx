@@ -161,10 +161,10 @@ export default function EmergencyContacts() {
               Prueba con otra zona o servicio.
             </p>
           ) : (
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="gap-5 md:columns-3 [column-fill:_balance]">
               {filteredGroups.map((group) => (
-                <div key={group.title}>
-                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div key={group.title} className="mb-5">
+                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900 [break-after:avoid]">
                     <span aria-hidden>{group.icon}</span> {group.title}
                   </h3>
                   <ul className="space-y-1.5">
@@ -175,8 +175,8 @@ export default function EmergencyContacts() {
                           key={contact.name}
                           className={
                             single
-                              ? "flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-                              : "rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                              ? "flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 [break-inside:avoid]"
+                              : "rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 [break-inside:avoid]"
                           }
                         >
                           <p className="text-sm font-medium text-slate-800">
