@@ -43,39 +43,39 @@ export default function Home() {
   return (
     <main className="flex-1">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto w-full max-w-7xl px-4 py-10 text-center">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 text-center sm:py-10">
           <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-sm font-medium text-red-700">
             🚨 Plataforma de ayuda humanitaria
           </span>
-          <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:mt-4 sm:text-4xl md:text-5xl">
             Mapa de Emergencia y Rescate: Terremoto en Venezuela
           </h1>
-          <h2 className="mx-auto mt-4 max-w-3xl text-base text-slate-600 sm:text-lg">
+          <h2 className="mx-auto mt-3 max-w-3xl text-sm text-slate-600 sm:mt-4 sm:text-lg">
             Reporte ciudadano en tiempo real para coordinar rescates, identificar
             daños estructurales y organizar la entrega de ayuda humanitaria.
           </h2>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div className="mx-auto mt-5 grid max-w-md grid-cols-2 gap-2 sm:mt-6 sm:flex sm:max-w-none sm:flex-wrap sm:justify-center sm:gap-3">
             <a
               href="#mapa"
-              className="inline-block rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+              className="col-span-2 flex items-center justify-center rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 sm:col-span-1"
             >
               Ir al mapa y reportar
             </a>
             <a
               href="#desaparecidas"
-              className="inline-block rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               🧍 Personas desaparecidas
             </a>
             <a
               href="#guia"
-              className="inline-block rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               🧭 Guía rápida
             </a>
             <a
               href="#telefonos"
-              className="inline-block rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               📞 Teléfonos de emergencia
             </a>
