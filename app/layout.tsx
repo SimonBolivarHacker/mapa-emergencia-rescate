@@ -105,6 +105,34 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Franja tricolor de Venezuela: muy fina, en el borde superior de toda la página */}
+        <div
+          aria-hidden
+          className="h-1.5 w-full shrink-0"
+          style={{
+            background:
+              "linear-gradient(to bottom, #FFCC00 0 33.34%, #00247D 33.34% 66.67%, #CF142B 66.67% 100%)",
+          }}
+        />
+
+        {/* Cinta de luto en memoria de las víctimas del terremoto */}
+        <span
+          title="En memoria de las víctimas del terremoto"
+          aria-label="En memoria de las víctimas del terremoto"
+          className="fixed right-3 top-3.5 z-[1500] block h-8 w-7 drop-shadow-sm"
+        >
+          <span
+            aria-hidden
+            style={{ transformOrigin: "center 28%" }}
+            className="absolute left-1/2 top-0 h-8 w-[5px] -translate-x-1/2 rotate-[24deg] rounded-full bg-neutral-900"
+          />
+          <span
+            aria-hidden
+            style={{ transformOrigin: "center 28%" }}
+            className="absolute left-1/2 top-0 h-8 w-[5px] -translate-x-1/2 -rotate-[24deg] rounded-full bg-neutral-900"
+          />
+        </span>
+
         {children}
         <PwaRegister />
         <script
