@@ -10,14 +10,33 @@ import { hasDbEnv } from "../db";
 import { upsertExternalMissingBatch } from "../missing";
 import type { SourceAdapter, SyncResult } from "./types";
 import { enabledSources, getSource } from "./sources";
+import { getSyncCursor, setSyncCursor } from "./state";
 
 const DEFAULT_USER_AGENT =
   "MapaEmergenciaVE/1.0 (+https://terremotovenezuela.app)";
+
+/** Páginas máximas por corrida chunked (freno duro). */
+const DEFAULT_PAGES_PER_RUN = 50;
+/** Presupuesto de tiempo por corrida chunked (deja margen al maxDuration). */
+const DEFAULT_TIME_BUDGET_MS = 200_000;
+/** Pausa entre páginas para ser gentiles con la fuente. */
+const INTER_PAGE_DELAY_MS = 200;
+/** Cinturón anti-bucle si la fuente no reporta totalPages. */
+const HARD_PAGE_CAP = 10_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export interface RunOptions {
   dryRun?: boolean;
   /** Tope de registros a procesar por fuente. */
   limit?: number;
+}
+
+export interface ChunkOptions {
+  /** Máximo de páginas a procesar en esta corrida. */
+  pagesPerRun?: number;
+  /** Presupuesto de tiempo (ms): se corta al excederlo. */
+  timeBudgetMs?: number;
 }
 
 function userAgent(): string {
@@ -99,6 +118,144 @@ export async function runAllSources(
   const results: SyncResult[] = [];
   for (const adapter of adapters) {
     results.push(await runSync(adapter, opts));
+  }
+  return results;
+}
+
+/**
+ * Sincroniza una fuente por CHUNKS: procesa un rango acotado de páginas (freno
+ * por `pagesPerRun` y por `timeBudgetMs`, lo que llegue primero), persiste el
+ * cursor en `sync_state` y reanuda en la próxima corrida. Al pasar la última
+ * página, da la vuelta a la página 1 (re-scan cíclico). Idempotente.
+ *
+ * Requiere que el adaptador implemente `fetchPage`. Nunca lanza.
+ */
+export async function runSyncChunked(
+  adapter: SourceAdapter,
+  opts: ChunkOptions = {},
+): Promise<SyncResult> {
+  const startedAt = Date.now();
+  const base: SyncResult = {
+    source: adapter.id,
+    ok: false,
+    dryRun: false,
+    fetched: 0,
+    inserted: 0,
+    updated: 0,
+    skipped: 0,
+    errors: 0,
+    startedAt,
+    finishedAt: startedAt,
+    durationMs: 0,
+  };
+
+  if (!hasDbEnv()) {
+    return finalize({ ...base, error: "DATABASE_URL no configurada." });
+  }
+  if (!adapter.fetchPage) {
+    return finalize({
+      ...base,
+      error: `La fuente ${adapter.id} no soporta fetchPage (modo chunked).`,
+    });
+  }
+
+  const pagesPerRun = Math.max(1, Math.trunc(opts.pagesPerRun ?? DEFAULT_PAGES_PER_RUN));
+  const timeBudgetMs = Math.max(1_000, Math.trunc(opts.timeBudgetMs ?? DEFAULT_TIME_BUDGET_MS));
+  const ua = userAgent();
+
+  try {
+    const cursor = await getSyncCursor(adapter.id);
+    let totalPages = cursor.totalPages;
+    // Si el cursor quedó más allá del total conocido, reinicia el ciclo.
+    let page =
+      totalPages && cursor.nextPage > totalPages ? 1 : cursor.nextPage;
+    const fromPage = page;
+
+    const seen = new Set<string>(); // dedup de solapes dentro de esta corrida
+    let pagesProcessed = 0;
+    let cycleCompleted = false;
+    let lastPage = page - 1;
+
+    while (
+      pagesProcessed < pagesPerRun &&
+      Date.now() - startedAt < timeBudgetMs &&
+      page <= HARD_PAGE_CAP
+    ) {
+      const { people, totalPages: tp } = await adapter.fetchPage(page, { userAgent: ua });
+      if (typeof tp === "number" && tp > 0) totalPages = tp;
+      base.fetched += people.length;
+
+      // Página vacía => llegamos al final: cerrar ciclo.
+      if (people.length === 0) {
+        cycleCompleted = true;
+        break;
+      }
+
+      const fresh = people.filter((p) => {
+        if (seen.has(p.externalId)) return false;
+        seen.add(p.externalId);
+        return true;
+      });
+      const r = await upsertExternalMissingBatch(fresh);
+      base.inserted += r.inserted;
+      base.updated += r.updated;
+      base.skipped += r.skipped;
+      base.errors += r.errors;
+
+      lastPage = page;
+      pagesProcessed++;
+      page++;
+
+      // Pasamos la última página conocida => cerrar ciclo y dar la vuelta.
+      if (totalPages && page > totalPages) {
+        cycleCompleted = true;
+        break;
+      }
+      await sleep(INTER_PAGE_DELAY_MS);
+    }
+
+    const nextPage = cycleCompleted ? 1 : page;
+    await setSyncCursor(
+      adapter.id,
+      { nextPage, totalPages },
+      { cycleCompleted },
+    );
+
+    return finalize({
+      ...base,
+      ok: true,
+      pagesProcessed,
+      fromPage,
+      toPage: lastPage,
+      nextPage,
+      cycleCompleted,
+    });
+  } catch (err) {
+    return finalize({
+      ...base,
+      error: err instanceof Error ? err.message : "Error desconocido.",
+    });
+  }
+}
+
+/**
+ * Corre todas las fuentes habilitadas en modo chunked. Las que no soportan
+ * `fetchPage` caen a `runSync` completo (p. ej. un feed que devuelve todo junto).
+ */
+export async function runAllSourcesChunked(
+  opts: ChunkOptions & { sourceIds?: string[] } = {},
+): Promise<SyncResult[]> {
+  const adapters = opts.sourceIds?.length
+    ? opts.sourceIds
+        .map((id) => getSource(id))
+        .filter((a): a is SourceAdapter => Boolean(a))
+    : enabledSources();
+
+  const results: SyncResult[] = [];
+  for (const adapter of adapters) {
+    results.push(
+      adapter.fetchPage ? await runSyncChunked(adapter, opts) : await runSync(adapter),
+    );
   }
   return results;
 }

@@ -60,6 +60,15 @@ export interface SourceAdapter {
   readonly kind: "json-api" | "pfif" | "html";
   /** Trae los registros de la fuente, ya normalizados a `ExternalPerson`. */
   fetchAll(ctx: FetchCtx): Promise<ExternalPerson[]>;
+  /**
+   * Trae UNA página (1-based) — habilita la ejecución por chunks. `totalPages`
+   * es null si la fuente no pagina (entonces no se usa el modo chunked).
+   * Opcional: si el adaptador no lo implementa, solo soporta `fetchAll`.
+   */
+  fetchPage?(
+    page: number,
+    ctx: FetchCtx,
+  ): Promise<{ people: ExternalPerson[]; totalPages: number | null }>;
 }
 
 /** Resultado de sincronizar una fuente. */
@@ -77,4 +86,14 @@ export interface SyncResult {
   startedAt: number;
   finishedAt: number;
   durationMs: number;
+  // --- solo en modo chunked ---
+  /** Páginas procesadas en esta corrida. */
+  pagesProcessed?: number;
+  /** Rango de páginas [from, to] cubierto en esta corrida. */
+  fromPage?: number;
+  toPage?: number;
+  /** Página por la que arrancará la próxima corrida. */
+  nextPage?: number;
+  /** true si esta corrida cerró un ciclo completo (volvió a la página 1). */
+  cycleCompleted?: boolean;
 }

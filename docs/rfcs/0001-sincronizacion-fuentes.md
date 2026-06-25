@@ -253,8 +253,8 @@ Resumen de estado:
 | **0** | `lib/sync` (tipos, normalize) + `upsertExternalMissing` (camino único) | ✅ hecho |
 | **1** | `DesaparecidosTerremotoAdapter` + motor + disparo admin (`/api/sync/run`) | ✅ hecho |
 | **1.5** | Identidad `(source, external_id)` + scan paginado real | ✅ hecho (ADR 0001) |
-| **2** | **Upsert por lotes** (desbloquea el sync completo) | ▶ siguiente (ADR 0002) |
-| **2.5** | Ejecución por chunks (presupuesto de tiempo serverless) | pendiente |
+| **2** | **Upsert por lotes** (desbloquea el sync completo) | ✅ hecho (ADR 0002) |
+| **2.5** | Ejecución por chunks (cursor `sync_state`, freno por páginas+tiempo) | ✅ hecho |
 | **3** | Cron Vercel + observabilidad (`sync_runs`/`sync_state`) + panel admin | pendiente |
 | **4** | Geocodificación automática acotada | pendiente |
 | **5** | `PfifFeedAdapter` (consume el feed de la issue #1) | pendiente |

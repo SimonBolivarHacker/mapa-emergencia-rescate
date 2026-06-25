@@ -122,7 +122,7 @@ export const desaparecidosTerremotoAdapter: SourceAdapter = {
     let totalPages = Infinity;
 
     while (page <= totalPages && page <= HARD_PAGE_CAP) {
-      const { items, meta } = await fetchPage(page, pageSize, ctx);
+      const { items, meta } = await requestPage(page, pageSize, ctx);
       if (typeof meta.totalPages === "number" && meta.totalPages > 0) {
         totalPages = meta.totalPages;
       }
@@ -144,10 +144,25 @@ export const desaparecidosTerremotoAdapter: SourceAdapter = {
 
     return people;
   },
+
+  // Una sola página, para la ejecución por chunks (ver engine.runSyncChunked).
+  async fetchPage(page: number, ctx: FetchCtx) {
+    const { items, meta } = await requestPage(page, PAGE_SIZE, ctx);
+    const people: ExternalPerson[] = [];
+    for (const raw of items) {
+      const person = mapPerson(raw);
+      if (person) people.push(person);
+    }
+    const totalPages =
+      typeof meta.totalPages === "number" && meta.totalPages > 0
+        ? meta.totalPages
+        : null;
+    return { people, totalPages };
+  },
 };
 
 /** Trae una página y devuelve sus items + metadatos de paginación. */
-async function fetchPage(
+async function requestPage(
   page: number,
   pageSize: number,
   ctx: FetchCtx,

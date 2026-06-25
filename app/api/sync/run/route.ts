@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "@/lib/admin";
-import { runAllSources } from "@/lib/sync/engine";
+import { runAllSources, runAllSourcesChunked } from "@/lib/sync/engine";
 
 export const dynamic = "force-dynamic";
 // Traer fuentes grandes + upsert puede tardar; ampliamos el límite de función.
@@ -12,6 +12,8 @@ export const maxDuration = 300;
  *   POST /api/sync/run?dryRun=1            -> simula, no escribe
  *   POST /api/sync/run?source=<id>         -> solo esa fuente
  *   POST /api/sync/run?limit=50            -> tope de registros por fuente
+ *   POST /api/sync/run?mode=chunk          -> por chunks (cursor en sync_state)
+ *   POST /api/sync/run?mode=chunk&pages=20 -> tope de páginas por corrida
  *
  * Autenticación: header `x-admin-token` (ver lib/admin.ts).
  */
@@ -29,13 +31,22 @@ export async function POST(request: Request) {
   const limitParam = Number(params.get("limit"));
   const limit =
     Number.isFinite(limitParam) && limitParam > 0 ? limitParam : undefined;
+  const chunk = params.get("mode") === "chunk";
+  const pagesParam = Number(params.get("pages"));
+  const pagesPerRun =
+    Number.isFinite(pagesParam) && pagesParam > 0 ? pagesParam : undefined;
 
   try {
-    const results = await runAllSources({
-      dryRun,
-      limit,
-      sourceIds: source ? [source] : undefined,
-    });
+    const results = chunk
+      ? await runAllSourcesChunked({
+          pagesPerRun,
+          sourceIds: source ? [source] : undefined,
+        })
+      : await runAllSources({
+          dryRun,
+          limit,
+          sourceIds: source ? [source] : undefined,
+        });
 
     const totals = results.reduce(
       (acc, r) => ({
