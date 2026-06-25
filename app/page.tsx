@@ -1,4 +1,5 @@
 import EmergencyApp from "./components/EmergencyApp";
+import ShareButton from "./components/ShareButton";
 import { REPORT_TYPES, type ReportType } from "@/lib/types";
 
 const STEPS = [
@@ -31,12 +32,15 @@ export default function Home() {
             Reporte ciudadano en tiempo real para coordinar rescates, identificar
             daños estructurales y organizar la entrega de ayuda humanitaria.
           </h2>
-          <a
-            href="#mapa"
-            className="mt-6 inline-block rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
-          >
-            Ir al mapa y reportar
-          </a>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#mapa"
+              className="inline-block rounded-lg bg-red-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+            >
+              Ir al mapa y reportar
+            </a>
+            <ShareButton />
+          </div>
         </div>
       </header>
 

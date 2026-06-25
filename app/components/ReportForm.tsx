@@ -14,6 +14,48 @@ interface ReportFormProps {
   }) => Promise<void>;
 }
 
+type FieldCopy = {
+  placeLabel: string;
+  placePlaceholder: string;
+  showAffected: boolean;
+  affectedLabel: string;
+  needsLabel: string;
+  needsPlaceholder: string;
+};
+
+const DEFAULT_COPY: FieldCopy = {
+  placeLabel: "Nombre o Dirección exacta del Edificio / Lugar",
+  placePlaceholder: "Ej: Residencias El Parque, Torre B, Municipio Chacao",
+  showAffected: true,
+  affectedLabel: "Cantidad estimada de personas afectadas o atrapadas",
+  needsLabel: "¿Qué se necesita con urgencia?",
+  needsPlaceholder:
+    "Sé específico: Equipos de rescate, paramédicos, agua potable, maquinaria pesada para escombros, medicinas",
+};
+
+const COPY_BY_TYPE: Partial<Record<ReportType, Partial<FieldCopy>>> = {
+  nopower: {
+    placeLabel: "Zona / Sector",
+    placePlaceholder: "Ej: Urbanización La Trinidad, calle principal",
+    showAffected: false,
+    needsLabel: "Detalles de la zona",
+    needsPlaceholder:
+      "¿Desde cuándo sin luz? ¿Hay agua, señal, comercios abiertos? ¿Vías despejadas?",
+  },
+  missing: {
+    placeLabel: "Última ubicación conocida",
+    placePlaceholder: "Ej: visto por última vez cerca de la plaza de Chacao",
+    affectedLabel: "¿Cuántas personas se buscan?",
+    needsLabel: "Descripción de la persona",
+    needsPlaceholder:
+      "Nombre, edad, estatura, vestimenta, señas particulares y un contacto",
+  },
+};
+
+function copyFor(type: ReportType): FieldCopy {
+  return { ...DEFAULT_COPY, ...COPY_BY_TYPE[type] };
+}
+
 export default function ReportForm({
   coords,
   onCancel,
@@ -25,6 +67,8 @@ export default function ReportForm({
   const [needs, setNeeds] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const copy = copyFor(type);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -38,7 +82,7 @@ export default function ReportForm({
       await onSubmit({
         type,
         place: place.trim(),
-        affected: Number(affected) || 0,
+        affected: copy.showAffected ? Number(affected) || 0 : 0,
         needs: needs.trim(),
       });
     } catch (err) {
@@ -110,50 +154,52 @@ export default function ReportForm({
               htmlFor="place"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              Nombre o Dirección exacta del Edificio / Lugar
+              {copy.placeLabel}
             </label>
             <input
               id="place"
               type="text"
               value={place}
               onChange={(e) => setPlace(e.target.value)}
-              placeholder="Ej: Residencias El Parque, Torre B, Municipio Chacao"
+              placeholder={copy.placePlaceholder}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
               required
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="affected"
-              className="mb-1 block text-sm font-medium text-slate-700"
-            >
-              Cantidad estimada de personas afectadas o atrapadas
-            </label>
-            <input
-              id="affected"
-              type="number"
-              min={0}
-              value={affected}
-              onChange={(e) => setAffected(e.target.value)}
-              placeholder="0"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
-            />
-          </div>
+          {copy.showAffected && (
+            <div>
+              <label
+                htmlFor="affected"
+                className="mb-1 block text-sm font-medium text-slate-700"
+              >
+                {copy.affectedLabel}
+              </label>
+              <input
+                id="affected"
+                type="number"
+                min={0}
+                value={affected}
+                onChange={(e) => setAffected(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+              />
+            </div>
+          )}
 
           <div>
             <label
               htmlFor="needs"
               className="mb-1 block text-sm font-medium text-slate-700"
             >
-              ¿Qué se necesita con urgencia?
+              {copy.needsLabel}
             </label>
             <textarea
               id="needs"
               value={needs}
               onChange={(e) => setNeeds(e.target.value)}
               rows={3}
-              placeholder="Sé específico: Equipos de rescate, paramédicos, agua potable, maquinaria pesada para escombros, medicinas"
+              placeholder={copy.needsPlaceholder}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
           </div>

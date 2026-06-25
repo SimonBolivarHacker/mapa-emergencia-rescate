@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { addReport, isPersistent, listReports } from "@/lib/store";
 import { checkRateLimit, clientIp } from "@/lib/ratelimit";
-import type { NewReport, ReportType } from "@/lib/types";
+import { REPORT_TYPE_KEYS, type NewReport, type ReportType } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  if (!type || !["critical", "supplies", "shelter"].includes(type)) {
+  if (!type || !REPORT_TYPE_KEYS.includes(type)) {
     return NextResponse.json(
       { error: "Selecciona el tipo de marcador." },
       { status: 400 },

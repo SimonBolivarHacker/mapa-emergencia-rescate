@@ -2,7 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { REPORT_TYPES, type EmergencyReport, type ReportType } from "@/lib/types";
+import {
+  REPORT_TYPES,
+  REPORT_TYPE_KEYS,
+  type EmergencyReport,
+  type ReportType,
+} from "@/lib/types";
 import ReportForm from "./ReportForm";
 import AdminLogin from "./AdminLogin";
 
@@ -142,13 +147,13 @@ export default function EmergencyApp() {
   );
 
   const counts = useMemo(() => {
-    return reports.reduce(
-      (acc, report) => {
-        acc[report.type] += 1;
-        return acc;
-      },
-      { critical: 0, supplies: 0, shelter: 0 } as Record<ReportType, number>,
-    );
+    const base = Object.fromEntries(
+      REPORT_TYPE_KEYS.map((key) => [key, 0]),
+    ) as Record<ReportType, number>;
+    for (const report of reports) {
+      if (base[report.type] !== undefined) base[report.type] += 1;
+    }
+    return base;
   }, [reports]);
 
   const visibleReports = useMemo(() => {

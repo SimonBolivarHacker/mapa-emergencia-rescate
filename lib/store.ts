@@ -1,5 +1,10 @@
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
-import type { EmergencyReport, NewReport, ReportType } from "./types";
+import {
+  REPORT_TYPE_KEYS,
+  type EmergencyReport,
+  type NewReport,
+  type ReportType,
+} from "./types";
 
 function hasDbEnv(): boolean {
   return Boolean(process.env.DATABASE_URL);
@@ -33,10 +38,8 @@ function ensureSchema(): Promise<void> {
 
 const memoryStore = new Map<string, EmergencyReport>();
 
-const VALID_TYPES: ReportType[] = ["critical", "supplies", "shelter"];
-
 function createReport(input: NewReport): EmergencyReport {
-  const type = VALID_TYPES.includes(input.type) ? input.type : "critical";
+  const type = REPORT_TYPE_KEYS.includes(input.type) ? input.type : "critical";
   return {
     id: crypto.randomUUID(),
     type,

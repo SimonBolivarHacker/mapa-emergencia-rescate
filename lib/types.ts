@@ -1,4 +1,9 @@
-export type ReportType = "critical" | "supplies" | "shelter";
+export type ReportType =
+  | "critical"
+  | "supplies"
+  | "shelter"
+  | "nopower"
+  | "missing";
 
 export interface EmergencyReport {
   id: string;
@@ -38,4 +43,20 @@ export const REPORT_TYPES: Record<
     description:
       "Punto verificado y habilitado para recibir donaciones físicas o resguardar familias (Refugio seguro).",
   },
+  nopower: {
+    label: "Zona estable (sin electricidad)",
+    color: "#0ea5e9",
+    emoji: "🔵",
+    description:
+      "Zona sin daños graves y segura, pero sin servicio eléctrico (y posiblemente sin señal). Útil para saber qué sectores están bien.",
+  },
+  missing: {
+    label: "Se busca (persona)",
+    color: "#9333ea",
+    emoji: "🟣",
+    description:
+      "Búsqueda de una persona desaparecida. Indica su última ubicación conocida y una descripción para ayudar a localizarla.",
+  },
 };
+
+export const REPORT_TYPE_KEYS = Object.keys(REPORT_TYPES) as ReportType[];
