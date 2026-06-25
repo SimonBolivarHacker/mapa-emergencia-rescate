@@ -77,7 +77,8 @@ acción.
 
 ### ADRs
 
-_(ninguno todavía)_
+- [0001 — Identidad de registros externos por (source, external_id)](adr/0001-identidad-source-external-id.md) · _aceptada_
+- [0002 — Upsert por lotes (batched)](adr/0002-upsert-por-lotes.md) · _aceptada_
 
 ### Arquitectura
 

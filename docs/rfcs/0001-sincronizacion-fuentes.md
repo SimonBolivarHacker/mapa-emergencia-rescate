@@ -246,16 +246,73 @@ docs/rfcs/0001-sincronizacion-fuentes.md
 
 ## 9. Plan por fases
 
-| Fase | Entrega | Riesgo |
-| --- | --- | --- |
-| **0** | Extraer upsert + normalize + geocode a `lib/sync` (sin cambio de comportamiento; el script sigue funcionando) | nulo |
-| **1** | `DesaparecidosTerremotoAdapter` + `runSync` + disparo manual admin (`/api/sync/run`, con `dryRun`) | bajo |
-| **2** | Cron Vercel + `sync_runs` + panel admin | bajo |
-| **3** | `PfifFeedAdapter` (consume el feed de la issue #1) | bajo |
-| **4** | Dedup entre fuentes (`person_links` + cola de revisión) | medio |
+Resumen de estado:
 
-La **Fase 1** ya reemplaza el paso manual de hoy: un admin aprieta un botón
-(o corre dry-run) y se sincroniza `desaparecidosterremotovenezuela.com`.
+| Fase | Entrega | Estado |
+| --- | --- | --- |
+| **0** | `lib/sync` (tipos, normalize) + `upsertExternalMissing` (camino único) | ✅ hecho |
+| **1** | `DesaparecidosTerremotoAdapter` + motor + disparo admin (`/api/sync/run`) | ✅ hecho |
+| **1.5** | Identidad `(source, external_id)` + scan paginado real | ✅ hecho (ADR 0001) |
+| **2** | **Upsert por lotes** (desbloquea el sync completo) | ▶ siguiente (ADR 0002) |
+| **2.5** | Ejecución por chunks (presupuesto de tiempo serverless) | pendiente |
+| **3** | Cron Vercel + observabilidad (`sync_runs`/`sync_state`) + panel admin | pendiente |
+| **4** | Geocodificación automática acotada | pendiente |
+| **5** | `PfifFeedAdapter` (consume el feed de la issue #1) | pendiente |
+| **6** | Dedup entre fuentes (`person_links` + revisión manual) | pendiente |
+
+### Fase 2 — Upsert por lotes (el desbloqueador) · ADR 0002
+
+Sin esto, un sync de ~43.700 registros tarda ~90 min (123 ms/llamada × N). Con
+lotes baja a segundos.
+
+- `upsertExternalMissingBatch(people)` en `lib/missing.ts`: INSERT multi-fila +
+  `ON CONFLICT (source, external_id)`, lotes de 500.
+- **Deduplicar la clave dentro de cada lote** (quedarse con el último) — Postgres
+  falla si la misma `(source, external_id)` aparece dos veces en el lote.
+- El motor (`engine.ts`) llama al batch en vez del loop por registro.
+- **Aceptación**: sync completo contra copia local en segundos; `inserted`/
+  `updated` correctos; 0 grupos duplicados al re-correr.
+- **Riesgos**: tope de parámetros (mitigado: 14×500=7.000 ≪ 65.535); fallo de un
+  lote → cuenta error y sigue.
+
+### Fase 2.5 — Ejecución por chunks
+
+Con el upsert resuelto, el costo pasa a **traer ~437 páginas** (~90 s con pausas)
++ escribir (~11 s). Cabe en una invocación con `maxDuration = 300`, pero la API
+es flaky bajo carga. Para robustez:
+
+- Cursor por fuente en `sync_state` (última página / watermark `updatedAt`).
+- Cada tick de cron procesa un **rango acotado de páginas** y avanza el cursor;
+  la próxima continúa. Idempotente → seguro reintentar.
+- El disparo manual admin permite forzar un rango (`?limit=`, futuro `?pages=`).
+- **Nota de consistencia**: la paginación por offset sobre feed vivo puede
+  *saltarse* algún registro entre páginas; el re-scan periódico + idempotencia lo
+  resuelven (consistencia eventual). No silenciar: registrar lo barrido.
+
+### Fase 3 — Cron + observabilidad
+
+- `vercel.json`: `/api/sync/cron` (cada 15–30 min) y `/api/sync/geocode`.
+- `CRON_SECRET` (`Authorization: Bearer`) en los endpoints de cron.
+- Tabla `sync_runs` (corridas: fuente, contadores, duración, ok) y `sync_state`
+  (cursor/watermark por fuente).
+- Panel admin: últimas corridas + botón "Sincronizar ahora".
+
+### Fase 4 — Geocodificación automática acotada
+
+- 43k registros necesitan `lat/lng` para el mapa; Nominatim exige ~1 req/s, pero
+  `geocode_cache` deduplica por ubicación normalizada (muchas menos llamadas).
+- Cron propio con **tope por corrida** que solo procesa nuevos/cambiados sin
+  coordenadas.
+
+### Fase 5 — Adaptador PFIF
+
+- `PfifFeedAdapter` consume el feed PFIF de la issue #1 (y cualquier otro PFIF).
+
+### Fase 6 — Dedup entre fuentes
+
+- `person_links` (agrupa probables-iguales) + matching difuso (nombre normalizado
+  + ubicación, trigram/Levenshtein) con **banda de revisión manual**. No
+  destructivo: un falso positivo nunca borra a nadie.
 
 ## 10. Variables de entorno nuevas
 
