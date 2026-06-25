@@ -90,6 +90,18 @@ const OFFICES: CountryOffice[] = [
           "https://noticiasargentinas.com/internacionales/terremoto-en-venezuela--organizan-una-colecta-solidaria-en-buenos-aires-para-enviar-ayuda-a-los-damnificados_a6a3d5c14fd88dacfc571f701",
         updatedAt: "25 jun 2026",
       },
+      {
+        city: "San Juan",
+        name: "Venezolanos se movilizan en San Juan",
+        address:
+          "Salón B, planta baja del Centro de Convenciones, San Juan, Argentina",
+        accepts:
+          "Alimentos no perecederos, medicinas, ropa y otros insumos de ayuda humanitaria.",
+        source: "Diario Móvil",
+        sourceHref:
+          "https://www.facebook.com/DiarioMovilOK/posts/venezolanos-se-movilizan-en-san-juan-la-tragedia-causada-por-los-terremotos-que-/1441568848018288/",
+        updatedAt: "25 jun 2026",
+      },
     ],
     shareChannels: [
       {
@@ -644,6 +656,31 @@ const OFFICES: CountryOffice[] = [
     ],
   },
   {
+    country: "Nueva Zelanda",
+    countryCode: "NZ",
+    organization: "Save the Children New Zealand",
+    lines: [
+      {
+        type: "web",
+        label: "Save the Children NZ - Venezuela Earthquake",
+        href: "https://www.savethechildren.org.nz/media-hub/venezuela-earthquake-rescuers-race-to-free-people",
+      },
+    ],
+    shareChannels: [
+      {
+        name: "Save the Children New Zealand",
+        description:
+          "Canal de emergencia para apoyar protección, salud, refugio y alimentos para niños y familias afectadas.",
+        href: "https://www.savethechildren.org.nz/media-hub/venezuela-earthquake-rescuers-race-to-free-people",
+        source: "Save the Children NZ",
+        sourceHref:
+          "https://www.savethechildren.org.nz/media-hub/venezuela-earthquake-rescuers-race-to-free-people",
+        updatedAt: "25 jun 2026",
+        status: "verified",
+      },
+    ],
+  },
+  {
     country: "Puerto Rico",
     countryCode: "PR",
     organization: "Casa Venezuela Puerto Rico / Municipio de Aguadilla",
@@ -652,6 +689,19 @@ const OFFICES: CountryOffice[] = [
         type: "web",
         label: "Coordinación de ayuda humanitaria",
         href: "https://www.elnuevodia.com/noticias/locales/notas/casi-no-hemos-dormido-a-la-expectativa-venezolanos-en-puerto-rico-tras-los-terremotos-en-su-pais/",
+      },
+    ],
+    donationPoints: [
+      {
+        city: "San Juan",
+        name: "Centro de Convenciones de Puerto Rico",
+        address: "Salón B, planta baja, 100 Convention Blvd, San Juan, PR",
+        accepts:
+          "Alimentos no perecederos, medicinas, ropa, cajas o bolsas de ayuda humanitaria.",
+        source: "El Vigía News",
+        sourceHref:
+          "https://www.facebook.com/ElVigiaNews/posts/%F0%9D%98%BE%F0%9D%99%8A%F0%9D%99%88%F0%9D%99%84%F0%9D%99%80%F0%9D%99%89%F0%9D%99%95%F0%9D%98%BC%F0%9D%99%89-%F0%9D%99%80%F0%9D%99%89-%F0%9D%99%8B%F0%9D%99%90%F0%9D%99%80%F0%9D%99%8D%F0%9D%99%8F%F0%9D%99%8A-%F0%9D%99%8D%F0%9D%99%84%F0%9D%98%BE%F0%9D%99%8A-%F0%9D%99%87%F0%9D%99%8A%F0%9D%99%8E-%F0%9D%99%8B%F0%9D%99%8D%F0%9D%99%80%F0%9D%99%8B%F0%9D%98%BC%F0%9D%99%8D%F0%9D%98%BC%F0%9D%99%8F%F0%9D%99%84%F0%9D%99%91%F0%9D%99%8A%F0%9D%99%8E-%F0%9D%99%8B%F0%9D%98%BC%F0%9D%99%8D%F0%9D%98%BC-%F0%9D%99%80%F0%9D%99%89%F0%9D%99%91%F0%9D%99%84%F0%9D%98%BC%F0%9D%99%8D-%F0%9D%98%BC%F0%9D%99%94%F0%9D%99%90%F0%9D%98%BF%F0%9D%98%BC-%F0%9D%99%83%F0%9D%99%90%F0%9D%99%88%F0%9D%98%BC%F0%9D%99%89%F0%9D%99%84%F0%9D%99%8F%F0%9D%98%BC%F0%9D%99%8D%F0%9D%99%84%F0%9D%98%BC-%F0%9D%98%BC-%F0%9D%99%91%F0%9D%99%80%F0%9D%99%89%F0%9D%99%80%F0%9D%99%95%F0%9D%99%90/1414816940680237/",
+        updatedAt: "25 jun 2026",
       },
     ],
     shareChannels: [
@@ -930,6 +980,7 @@ const TIME_ZONE_COUNTRY_CODES: Record<string, string> = {
   "Atlantic/Canary": "ES",
   "America/Tegucigalpa": "HN",
   "America/Mexico_City": "MX",
+  "Pacific/Auckland": "NZ",
   "America/Panama": "PA",
   "America/Puerto_Rico": "PR",
   "Europe/London": "GB",
