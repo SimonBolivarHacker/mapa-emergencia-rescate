@@ -1,4 +1,5 @@
 import { getSql, hasDbEnv } from "./db";
+import type { ExternalPerson } from "./sync/types";
 
 export type MissingStatus = "active" | "found";
 
@@ -96,7 +97,12 @@ function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS photo_external_url TEXT`;
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`;
       await sql`ALTER TABLE missing_persons ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`;
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS missing_persons_external_id_idx ON missing_persons (external_id) WHERE external_id IS NOT NULL`;
+      // Identidad de registros externos por (source, external_id): permite que
+      // dos fuentes usen el mismo id crudo sin chocar. Migra desde el índice
+      // antiguo de solo external_id (crea el nuevo y luego suelta el viejo, de
+      // modo que la unicidad nunca queda sin proteger).
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS missing_persons_source_external_id_idx ON missing_persons (source, external_id) WHERE external_id IS NOT NULL`;
+      await sql`DROP INDEX IF EXISTS missing_persons_external_id_idx`;
 
       // Índice del listado paginado: filtro por estado + orden + offset.
       await sql`
@@ -703,4 +709,170 @@ export async function listMissingMapMarkers(
     lng: Number(row.lng),
     createdAt: Number(row.created_at),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Sincronización de fuentes externas (ver docs/rfcs/0001-sincronizacion-fuentes.md)
+// ---------------------------------------------------------------------------
+
+function clipText(value: unknown, max: number): string {
+  if (value === null || value === undefined) return "";
+  const s = String(value).trim();
+  return s.length > max ? s.slice(0, max) : s;
+}
+
+export interface UpsertResult {
+  /** true si fue INSERT (registro nuevo); false si fue UPDATE. */
+  inserted: boolean;
+}
+
+export interface BatchUpsertResult {
+  inserted: number;
+  updated: number;
+  /** Registros descartados por inválidos (sin source/externalId/name). */
+  skipped: number;
+  /** Registros en lotes que fallaron al escribir. */
+  errors: number;
+}
+
+const DEFAULT_BATCH_SIZE = 1000;
+const MAX_BATCH_SIZE = 4000;
+
+/** Columnas del INSERT de registros externos (orden fijo, alineado con los valores). */
+const EXTERNAL_COLS = [
+  "id", "name", "age", "description", "last_seen", "contact",
+  "photo_external_url", "external_id", "source", "source_url",
+  "status", "resolution_note", "resolved_at", "created_at",
+] as const;
+
+/** Cláusula DO UPDATE: misma semántica que el upsert de una fila. */
+const CONFLICT_UPDATE_SET = `
+  name = EXCLUDED.name,
+  age = EXCLUDED.age,
+  description = EXCLUDED.description,
+  last_seen = EXCLUDED.last_seen,
+  contact = EXCLUDED.contact,
+  photo_external_url = COALESCE(missing_persons.photo_external_url, EXCLUDED.photo_external_url),
+  source = COALESCE(missing_persons.source, EXCLUDED.source),
+  source_url = COALESCE(missing_persons.source_url, EXCLUDED.source_url),
+  status = EXCLUDED.status,
+  resolution_note = COALESCE(EXCLUDED.resolution_note, missing_persons.resolution_note),
+  resolved_at = COALESCE(EXCLUDED.resolved_at, missing_persons.resolved_at)`;
+
+/**
+ * Prepara los valores de una fila a partir de un registro externo. El
+ * `external_id` se guarda CRUDO; la unicidad es por (source, external_id) — ver
+ * índice compuesto en ensureSchema. Devuelve null si el registro es inválido
+ * (sin source/externalId/name) para que el caller lo cuente como saltado.
+ */
+function buildExternalRow(
+  input: ExternalPerson,
+): { key: string; values: unknown[] } | null {
+  const externalId = (input.externalId ?? "").trim();
+  const source = clipText(input.source, 120);
+  const name = clipText(input.name, MAX_NAME);
+  if (!externalId || !source || !name) return null;
+
+  const status: MissingStatus = input.status === "found" ? "found" : "active";
+  // El contacto solo llega si el adaptador decidió importarlo (ver RFC §6).
+  const values: unknown[] = [
+    crypto.randomUUID(),
+    name,
+    normalizeAge(input.age),
+    clipText(input.description, MAX_DESCRIPTION),
+    clipText(input.lastSeen, MAX_LAST_SEEN),
+    clipText(input.contact, MAX_CONTACT),
+    typeof input.photoUrl === "string" && /^https?:\/\//i.test(input.photoUrl)
+      ? input.photoUrl.slice(0, 600)
+      : null,
+    externalId,
+    source,
+    typeof input.sourceUrl === "string" ? input.sourceUrl.slice(0, 300) : null,
+    status,
+    status === "found" && input.resolutionNote
+      ? clipText(input.resolutionNote, MAX_RESOLUTION_NOTE) || null
+      : null,
+    status === "found" ? (input.resolvedAt ?? Date.now()) : null,
+    input.createdAt ?? Date.now(),
+  ];
+  return { key: JSON.stringify([source, externalId]), values };
+}
+
+/**
+ * Camino ÚNICO de escritura para registros de fuentes externas. Inserta/actualiza
+ * por lotes (INSERT multi-fila + ON CONFLICT (source, external_id)), idempotente:
+ * re-correr no duplica, solo actualiza los campos que cambian.
+ *
+ * Deduplica por (source, external_id) quedándose con el último, porque Postgres
+ * falla si una misma clave aparece dos veces en el mismo ON CONFLICT (el feed
+ * vivo + paginación por offset produce solapes). Ver ADR 0002.
+ */
+export async function upsertExternalMissingBatch(
+  people: ExternalPerson[],
+  opts: { batchSize?: number } = {},
+): Promise<BatchUpsertResult> {
+  if (!hasDbEnv()) {
+    throw new Error("upsertExternalMissingBatch requiere DATABASE_URL.");
+  }
+  const result: BatchUpsertResult = { inserted: 0, updated: 0, skipped: 0, errors: 0 };
+  const batchSize = Math.min(
+    Math.max(Math.trunc(opts.batchSize ?? DEFAULT_BATCH_SIZE), 1),
+    MAX_BATCH_SIZE,
+  );
+
+  const byKey = new Map<string, unknown[]>();
+  for (const person of people) {
+    const row = buildExternalRow(person);
+    if (!row) {
+      result.skipped++;
+      continue;
+    }
+    byKey.set(row.key, row.values);
+  }
+  const rows = [...byKey.values()];
+  if (rows.length === 0) return result;
+
+  await ensureSchema();
+  const sql = getSql();
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const chunk = rows.slice(i, i + batchSize);
+    const tuples: string[] = [];
+    const params: unknown[] = [];
+    let n = 1;
+    for (const values of chunk) {
+      tuples.push(`(${values.map(() => `$${n++}`).join(",")})`);
+      params.push(...values);
+    }
+    const text =
+      `INSERT INTO missing_persons (${EXTERNAL_COLS.join(", ")}) VALUES ${tuples.join(",")}` +
+      ` ON CONFLICT (source, external_id) WHERE external_id IS NOT NULL DO UPDATE SET${CONFLICT_UPDATE_SET}` +
+      ` RETURNING (xmax = 0) AS inserted`;
+    try {
+      const out = (await sql.query(text, params)) as { inserted: boolean }[];
+      for (const r of out) {
+        if (r.inserted) result.inserted++;
+        else result.updated++;
+      }
+    } catch {
+      result.errors += chunk.length;
+    }
+  }
+  return result;
+}
+
+/**
+ * Upsert de un solo registro externo. Delega en el batch para tener una sola
+ * fuente de verdad del SQL. Lanza si el registro es inválido o si falla la
+ * escritura (preserva el contrato previo de fallo ruidoso).
+ */
+export async function upsertExternalMissing(
+  input: ExternalPerson,
+): Promise<UpsertResult> {
+  const r = await upsertExternalMissingBatch([input]);
+  if (r.skipped > 0) {
+    throw new Error("Registro externo inválido (falta source, externalId o name).");
+  }
+  if (r.errors > 0) throw new Error("Error al hacer upsert del registro externo.");
+  return { inserted: r.inserted > 0 };
 }

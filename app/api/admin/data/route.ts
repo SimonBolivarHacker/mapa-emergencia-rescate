@@ -3,6 +3,7 @@ import { isAdminRequest } from "@/lib/admin";
 import { listReports, isPersistent } from "@/lib/store";
 import { listMessages } from "@/lib/chat";
 import { listMissing } from "@/lib/missing";
+import { listSyncRuns, listSyncState } from "@/lib/sync/state";
 import { REPORT_TYPE_KEYS, type ReportType } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +19,12 @@ export async function GET(request: Request) {
     );
   }
 
-  const [reports, messages, people] = await Promise.all([
+  const [reports, messages, people, syncRuns, syncState] = await Promise.all([
     listReports(),
     listMessages(),
     listMissing({ includeFound: true }),
+    listSyncRuns(15),
+    listSyncState(),
   ]);
 
   const now = Date.now();
@@ -76,6 +79,7 @@ export async function GET(request: Request) {
       reports,
       messages,
       people,
+      sync: { runs: syncRuns, state: syncState },
     },
     { headers: { "Cache-Control": "no-store" } },
   );
