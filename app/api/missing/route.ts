@@ -15,8 +15,20 @@ const LIST_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=0, s-maxage=2, stale-while-revalidate=15",
 };
 
-export async function GET() {
-  const people = await listMissing();
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status");
+  // Por defecto se listan solo las personas activas (las localizadas se
+  // ocultan para proteger su privacidad y mantener el foco). Con
+  // ?status=found devolvemos solo las localizadas (caso "muro de
+  // esperanza"); con ?status=all devolvemos ambas.
+  const all = await listMissing({ includeFound: true });
+  let people = all.filter((p) => p.status === "active");
+  if (status === "found") {
+    people = all.filter((p) => p.status === "found");
+  } else if (status === "all") {
+    people = all;
+  }
   return NextResponse.json(
     { people, persistent: isPersistent() },
     { headers: LIST_CACHE_HEADERS },

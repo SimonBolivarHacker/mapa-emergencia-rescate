@@ -2,6 +2,7 @@ import EmergencyApp from "./components/EmergencyApp";
 import ShareButton from "./components/ShareButton";
 import ChatPanel from "./components/ChatPanel";
 import EmergencyContacts from "./components/EmergencyContacts";
+import FoundPersons from "./components/FoundPersons";
 import MissingPersons from "./components/MissingPersons";
 import MissingPersonsCarousel from "./components/MissingPersonsCarousel";
 import SurvivalGuide from "./components/SurvivalGuide";
@@ -66,6 +67,12 @@ export default function Home() {
               className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               🧍 Personas desaparecidas
+            </a>
+            <a
+              href="#localizados"
+              className="flex items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+            >
+              💚 Localizados a salvo
             </a>
             <a
               href="#guia"
@@ -193,6 +200,8 @@ export default function Home() {
       <EmergencyApp />
 
       <MissingPersons />
+
+      <FoundPersons />
 
       <SurvivalGuide />
 
