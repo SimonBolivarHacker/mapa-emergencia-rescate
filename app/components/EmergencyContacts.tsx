@@ -92,7 +92,7 @@ function normalize(text: string): string {
     .trim();
 }
 
-export default function EmergencyContacts({ embedded = false }: { embedded?: boolean }) {
+export default function EmergencyContacts() {
   const [query, setQuery] = useState("");
 
   const totalNumbers = GROUPS.reduce(
@@ -113,9 +113,12 @@ export default function EmergencyContacts({ embedded = false }: { embedded?: boo
     }).filter((group) => group.contacts.length > 0);
   }, [query]);
 
-  const body = (
-    <>
-      {!embedded && (
+  return (
+    <section id="telefonos" className="mx-auto w-full max-w-7xl px-4 py-10">
+      <details
+        open
+        className="group rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl p-4 sm:p-6">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -135,9 +138,8 @@ export default function EmergencyContacts({ embedded = false }: { embedded?: boo
             ▼
           </span>
         </summary>
-      )}
 
-      <div className={embedded ? "p-4 sm:p-6" : "border-t border-slate-100 p-3 sm:p-6"}>
+        <div className="border-t border-slate-100 p-3 sm:p-6">
           <div className="relative mb-4">
             <span
               aria-hidden
@@ -214,29 +216,7 @@ export default function EmergencyContacts({ embedded = false }: { embedded?: boo
             ayuda. Si un número no responde, intenta con la línea de emergencia
             general (171 / 911).
           </p>
-      </div>
-    </>
-  );
-
-  if (embedded) {
-    return (
-      <section id="telefonos" className="mx-auto w-full max-w-7xl px-4 pb-14">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-4 py-4 sm:px-6">
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-              {totalNumbers} números
-            </span>
-          </div>
-          {body}
         </div>
-      </section>
-    );
-  }
-
-  return (
-    <section id="telefonos" className="mx-auto w-full max-w-7xl px-4 py-10">
-      <details open className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {body}
       </details>
     </section>
   );
