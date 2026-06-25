@@ -37,6 +37,13 @@ export const SECTION_LINKS: SectionLink[] = [
     badge: "found",
   },
   {
+    href: "#hospitales",
+    label: "Hospitales y pacientes",
+    shortLabel: "Hospitales",
+    icon: "🏥",
+    tone: "default",
+  },
+  {
     href: "#telefonos",
     label: "Teléfonos de emergencia",
     shortLabel: "Teléfonos",

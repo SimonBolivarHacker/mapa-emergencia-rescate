@@ -34,6 +34,14 @@ const MissingPersons = dynamic(() => import("./components/MissingPersons"), {
 const FoundPersons = dynamic(() => import("./components/FoundPersons"));
 const ChatPanel = dynamic(() => import("./components/ChatPanel"));
 
+const Hospitals = dynamic(() => import("./components/Hospitals"), {
+  loading: () => (
+    <section className="mx-auto w-full max-w-7xl px-4 py-10 text-sm text-slate-500">
+      Cargando hospitales…
+    </section>
+  ),
+});
+
 const STEPS: {
   icon: string;
   title: string;
@@ -211,6 +219,8 @@ export default function Home() {
       <MissingPersons />
 
       <FoundPersons />
+
+      <Hospitals />
 
       <SurvivalGuide />
 
