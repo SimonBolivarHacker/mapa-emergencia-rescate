@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 import EmergencyApp from "./components/EmergencyApp";
 import ShareButton from "./components/ShareButton";
+import HeroPeopleLinks from "./components/HeroPeopleLinks";
 import EmergencyContacts from "./components/EmergencyContacts";
 import SurvivalGuide from "./components/SurvivalGuide";
 import { REPORT_TYPES, type ReportType } from "@/lib/types";
@@ -81,18 +82,7 @@ export default function Home() {
             >
               Ir al mapa y reportar
             </a>
-            <a
-              href="#desaparecidas"
-              className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              🧍 Personas desaparecidas
-            </a>
-            <a
-              href="#localizados"
-              className="flex items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
-            >
-              💚 Localizados a salvo
-            </a>
+            <HeroPeopleLinks />
             <a
               href="#guia"
               className="flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
