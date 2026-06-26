@@ -1,5 +1,7 @@
 import dynamic from "next/dynamic";
 import EmergencyApp from "./components/EmergencyApp";
+import HeroActionCards from "./components/HeroActionCards";
+import HeroStats from "./components/HeroStats";
 import {
   HeroDesktopNav,
   HeroMobileCta,
@@ -93,12 +95,15 @@ export default function Home() {
             <span aria-hidden>✉️</span>
             {CONTACT_EMAIL}
           </a>
+          <HeroStats />
           <HeroMobileCta />
         </div>
         <DonationsTicker variant="hero" />
       </header>
 
       <MobileStickyNav />
+
+      <HeroActionCards />
 
       <MissingPersonsCarousel />
 
