@@ -14,6 +14,13 @@ import {
 } from "@/lib/hospitals-meta";
 import HospitalForm, { type HospitalPayload } from "./HospitalForm";
 import HospitalDetailView from "./HospitalDetailView";
+import {
+  trackHospitalDetailViewed,
+  trackHospitalFilterUsed,
+  trackHospitalListViewed,
+  trackHospitalPatientSearchResultsLoaded,
+  trackHospitalPatientSearchStarted,
+} from "./analytics";
 
 type Tab = "hospitals" | "patients";
 const PAGE_SIZE = 20;
@@ -54,6 +61,8 @@ export default function Hospitals() {
   const [patientHasMore, setPatientHasMore] = useState(false);
   const [patientLoading, setPatientLoading] = useState(false);
   const [patientError, setPatientError] = useState<string | null>(null);
+  const lastTrackedPatientSearchRef = useRef("");
+  const lastTrackedPatientResultsRef = useRef("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +86,7 @@ export default function Hospitals() {
     const id = window.setTimeout(() => {
       load();
     }, 0);
+    trackHospitalListViewed("hospitales_page");
     return () => window.clearTimeout(id);
   }, [load]);
 
@@ -90,6 +100,10 @@ export default function Hospitals() {
     if (q.length === 1) {
       return;
     }
+    if (q && lastTrackedPatientSearchRef.current !== q) {
+      lastTrackedPatientSearchRef.current = q;
+      trackHospitalPatientSearchStarted(true);
+    }
     let cancelled = false;
     const id = window.setTimeout(() => {
       setPatientLoading(true);
@@ -100,8 +114,16 @@ export default function Hospitals() {
         .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Error"))))
         .then((data: { results?: PatientSearchResult[]; hasMore?: boolean }) => {
           if (!cancelled) {
-            setPatientResults(data.results ?? []);
+            const nextResults = data.results ?? [];
+            setPatientResults(nextResults);
             setPatientHasMore(Boolean(data.hasMore));
+            if (q) {
+              const resultsKey = `${q}:${nextResults.length}:${patientLimit}`;
+              if (lastTrackedPatientResultsRef.current !== resultsKey) {
+                lastTrackedPatientResultsRef.current = resultsKey;
+                trackHospitalPatientSearchResultsLoaded(nextResults.length);
+              }
+            }
           }
         })
         .catch(() => {
@@ -215,7 +237,13 @@ export default function Hospitals() {
         <TabButton active={tab === "hospitals"} onClick={() => setTab("hospitals")}>
           🏥 Hospitales
         </TabButton>
-        <TabButton active={tab === "patients"} onClick={() => setTab("patients")}>
+        <TabButton
+          active={tab === "patients"}
+          onClick={() => {
+            trackHospitalPatientSearchStarted(false);
+            setTab("patients");
+          }}
+        >
           🔎 Buscar paciente
         </TabButton>
       </div>
@@ -291,14 +319,22 @@ function HospitalsListView({
         <input
           type="search"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (e.target.value.trim().length === 2) {
+              trackHospitalFilterUsed("search");
+            }
+          }}
           placeholder="Buscar por nombre, municipio o dirección…"
           className="w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-400 lg:max-w-md"
         />
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={stateFilter}
-            onChange={(e) => setStateFilter(e.target.value)}
+            onChange={(e) => {
+              setStateFilter(e.target.value);
+              trackHospitalFilterUsed("state");
+            }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-400"
           >
             <option value="">Todos los estados</option>
@@ -317,7 +353,10 @@ function HospitalsListView({
                 <button
                   key={f.value}
                   type="button"
-                  onClick={() => setZoneFilter(f.value)}
+                  onClick={() => {
+                    setZoneFilter(f.value);
+                    trackHospitalFilterUsed("zone", f.value);
+                  }}
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                     active
                       ? "text-white shadow-sm"
@@ -352,7 +391,14 @@ function HospitalsListView({
               <li key={h.id}>
                 <HospitalCard
                   hospital={h}
-                  onOpen={() => setSelectedHospital(h)}
+                  onOpen={() => {
+                    trackHospitalDetailViewed({
+                      priorityZone: h.priorityZone,
+                      patientCount: h.activePatients,
+                      source: "hospital_card_overlay",
+                    });
+                    setSelectedHospital(h);
+                  }}
                 />
               </li>
             ))}
@@ -838,8 +884,11 @@ function HospitalDetailOverlay({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+    });
 
     fetch(`/api/hospitals/${hospital.id}/patients`, { cache: "no-store" })
       .then((res) =>

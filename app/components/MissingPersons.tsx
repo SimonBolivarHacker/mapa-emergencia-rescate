@@ -6,6 +6,13 @@ import MissingPersonForm, {
 } from "./MissingPersonForm";
 import MissingPersonDetail from "./MissingPersonDetail";
 import { useLowBandwidthMode } from "./useLowBandwidthMode";
+import {
+  trackMissingReportAfterNoResults,
+  trackMissingReportStarted,
+  trackPersonDetailViewed,
+  trackPersonSearchResultsLoaded,
+  trackPersonSearchStarted,
+} from "./analytics";
 import { timeAgo } from "@/lib/format";
 
 interface MissingPerson {
@@ -62,6 +69,8 @@ export default function MissingPersons() {
   const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState<number>(() => Date.now());
+  const lastTrackedSearchRef = useRef("");
+  const lastTrackedResultsRef = useRef("");
   const network = useLowBandwidthMode(
     POLL_INTERVAL_MS,
     LOW_BANDWIDTH_POLL_INTERVAL_MS,
@@ -78,6 +87,13 @@ export default function MissingPersons() {
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
+
+  useEffect(() => {
+    const q = debouncedQuery.trim();
+    if (!q || lastTrackedSearchRef.current === q) return;
+    lastTrackedSearchRef.current = q;
+    trackPersonSearchStarted("missing_persons", true);
+  }, [debouncedQuery]);
 
   const load = useCallback(
     async (manual = false) => {
@@ -102,12 +118,25 @@ export default function MissingPersons() {
         const data = await res.json();
         // Ignorar respuestas de solicitudes anteriores (carrera con polling).
         if (requestId !== requestIdRef.current) return;
-        setPeople(data.people ?? []);
-        setTotal(data.total ?? 0);
+        const nextPeople = data.people ?? [];
+        const nextTotal = data.total ?? 0;
+        setPeople(nextPeople);
+        setTotal(nextTotal);
         setTotalCapped(Boolean(data.totalCapped));
         setTotalPages(data.totalPages ?? 1);
         setPersistent(Boolean(data.persistent));
         setLastFetchAt(Date.now());
+        if (debouncedQuery.trim()) {
+          const resultsKey = `${debouncedQuery.trim()}:${page}:${nextTotal}`;
+          if (lastTrackedResultsRef.current !== resultsKey) {
+            lastTrackedResultsRef.current = resultsKey;
+            trackPersonSearchResultsLoaded({
+              source: "missing_persons",
+              resultsCount: nextTotal,
+              page,
+            });
+          }
+        }
         // El servidor acota la página al rango válido (p. ej. tras borrados).
         if (typeof data.page === "number" && data.page !== page) {
           setPage(data.page);
@@ -160,6 +189,20 @@ export default function MissingPersons() {
     }
     listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [page]);
+
+  useEffect(() => {
+    const openFromHash = () => {
+      if (window.location.hash === "#reportar-desaparecido") {
+        setShowForm(true);
+        document
+          .getElementById("desaparecidas")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
 
   const handleSubmit = useCallback(async (payload: MissingPersonPayload) => {
     const res = await fetch("/api/missing", {
@@ -257,13 +300,18 @@ export default function MissingPersons() {
               </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="shrink-0 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
-          >
-            + Reportar desaparecida
-          </button>
+          {!isSearching && (
+            <button
+              type="button"
+              onClick={() => {
+                trackMissingReportStarted("missing_persons_header");
+                setShowForm(true);
+              }}
+              className="shrink-0 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+            >
+              + Reportar desaparecida
+            </button>
+          )}
         </div>
 
         <div className="relative mt-4">
@@ -296,11 +344,26 @@ export default function MissingPersons() {
         )}
 
         {people.length === 0 ? (
-          <p className="mt-6 rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            {isSearching
-              ? `No se encontraron personas para “${debouncedQuery.trim()}”.`
-              : "Aún no hay personas reportadas. Usa el botón para agregar la primera."}
-          </p>
+          <div className="mt-6 rounded-xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+            <p>
+              {isSearching
+                ? `No se encontraron personas para “${debouncedQuery.trim()}”.`
+                : "Aún no hay personas reportadas. Usa el botón para agregar la primera."}
+            </p>
+            {isSearching && (
+              <button
+                type="button"
+                onClick={() => {
+                  trackMissingReportAfterNoResults("missing_empty_state");
+                  trackMissingReportStarted("missing_empty_state");
+                  setShowForm(true);
+                }}
+                className="mt-4 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                Reportar desaparecido
+              </button>
+            )}
+          </div>
         ) : (
           <>
             <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,7 +376,14 @@ export default function MissingPersons() {
                   >
                     <button
                       type="button"
-                      onClick={() => setSelected(person)}
+                      onClick={() => {
+                        trackPersonDetailViewed({
+                          status: person.status,
+                          hasPhoto: Boolean(person.photoUrl),
+                          source: "missing_card",
+                        });
+                        setSelected(person);
+                      }}
                       aria-label={`Ver detalle de ${person.name}`}
                       className="flex w-full gap-3 p-3 text-left transition active:bg-slate-50"
                     >
