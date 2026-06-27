@@ -1,4 +1,5 @@
 import { getSql, hasDbEnv } from "./db";
+import { isR2Configured, uploadPhotoDataUrl } from "./r2";
 import type { ExternalPerson } from "./sync/types";
 
 export type MissingStatus = "active" | "found";
@@ -41,6 +42,8 @@ export interface MissingStats {
   onMap: number;
 }
 
+export type MissingReportType = "missing" | "found";
+
 export interface NewMissingPerson {
   name: string;
   age?: number | string | null;
@@ -49,6 +52,8 @@ export interface NewMissingPerson {
   contact?: string;
   /** Data URL de la foto (data:image/...;base64,...). Opcional. */
   photo?: string | null;
+  /** Reporte de persona desaparecida (activa) o encontrada (localizada). */
+  reportType?: MissingReportType;
 }
 
 export const MAX_NAME = 120;
@@ -441,15 +446,30 @@ export async function addMissing(
   const photo =
     typeof input.photo === "string" && input.photo ? input.photo : null;
   const createdAt = Date.now();
+  const isFound = input.reportType === "found";
+  const status: MissingStatus = isFound ? "found" : "active";
+  const resolutionNote = isFound ? description : null;
+  const resolvedAt = isFound ? createdAt : null;
+
+  // Si R2 está configurado, la foto va al CDN y guardamos la URL (no base64).
+  // Hard-fail: si la subida falla, el error sube y el endpoint no confirma.
+  let stored = photo;
+  let migratedAt: number | null = null;
+  if (photo && isR2Configured()) {
+    stored = await uploadPhotoDataUrl(photo, "missing_persons", id);
+    migratedAt = Date.now();
+  }
 
   if (hasDbEnv()) {
     await ensureSchema();
     await getSql()`
       INSERT INTO missing_persons
-        (id, name, age, description, last_seen, contact, photo, created_at)
+        (id, name, age, description, last_seen, contact, photo, photo_migrated_at,
+         created_at, status, resolution_note, resolved_at)
       VALUES (
         ${id}, ${name}, ${age}, ${description}, ${lastSeen},
-        ${contact}, ${photo}, ${createdAt}
+        ${contact}, ${stored}, ${migratedAt}, ${createdAt},
+        ${status}, ${resolutionNote}, ${resolvedAt}
       )
     `;
   } else {
@@ -460,13 +480,13 @@ export async function addMissing(
       description,
       lastSeen,
       contact,
-      photo,
+      photo: stored,
       photoUrl: photo ? `/api/missing/${id}/photo` : null,
-      status: "active",
-      resolutionNote: null,
+      status,
+      resolutionNote,
       resolutionPhoto: null,
       resolutionPhotoUrl: null,
-      resolvedAt: null,
+      resolvedAt,
       createdAt,
     });
   }
@@ -479,10 +499,10 @@ export async function addMissing(
     lastSeen,
     contact,
     photoUrl: photo ? `/api/missing/${id}/photo` : null,
-    status: "active",
-    resolutionNote: null,
+    status,
+    resolutionNote,
     resolutionPhotoUrl: null,
-    resolvedAt: null,
+    resolvedAt,
     createdAt,
   };
 }
@@ -503,9 +523,14 @@ export async function markMissingFound(
   }
   const cleanNote = note.trim().slice(0, MAX_RESOLUTION_NOTE);
   if (!cleanNote) throw new Error("Falta la descripción de cómo se comunicaron.");
-  const photo =
+  const validPhoto =
     resolutionPhoto && isValidPhotoDataUrl(resolutionPhoto) ? resolutionPhoto : null;
   const resolvedAt = Date.now();
+  // Foto-prueba a R2 cuando está configurado (hard-fail). `photo` será la URL.
+  let photo = validPhoto;
+  if (validPhoto && isR2Configured()) {
+    photo = await uploadPhotoDataUrl(validPhoto, "resolution", id);
+  }
 
   if (hasDbEnv()) {
     await ensureSchema();
@@ -613,7 +638,7 @@ export async function getMissingPhoto(
 /** Foto-prueba que se subió al marcar a la persona como localizada. */
 export async function getMissingResolutionPhoto(
   id: string,
-): Promise<PhotoData | null> {
+): Promise<PhotoData | RemotePhoto | null> {
   let dataUrl: string | null = null;
   if (hasDbEnv()) {
     await ensureSchema();
@@ -624,6 +649,8 @@ export async function getMissingResolutionPhoto(
   } else {
     dataUrl = memoryStore.get(id)?.resolutionPhoto ?? null;
   }
+  // Foto-prueba migrada a R2: redirigir al CDN en vez de servir bytes.
+  if (dataUrl && /^https?:\/\//i.test(dataUrl)) return { redirectTo: dataUrl };
   return dataUrlToPhoto(dataUrl);
 }
 

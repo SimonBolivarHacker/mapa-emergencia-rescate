@@ -4,6 +4,12 @@ Background jobs that migrate the Neon prod data + images onto the Hetzner stack.
 Pattern mirrors boahaus-backend (BullMQ + ioredis) and clickup-argo's concurrency
 safety (Valkey `SET NX EX` lock, `FOR UPDATE SKIP LOCKED`, deterministic jobIds).
 
+> **Scope:** this `worker/` system is the **one-time backlog migration** (old
+> base64-in-DB photos + external image URLs → R2). NEW photos uploaded through
+> the live API no longer go through here — the app uploads them to R2 at ingest
+> time via `lib/r2.ts` (stores the CDN URL in the `photo` column, stamps
+> `photo_migrated_at`). See "App-side R2 (new uploads)" below.
+
 ## What it does
 
 1. **migrate-tables** — copies every `public` table from Neon → Hetzner `app` DB,
@@ -58,6 +64,26 @@ deterministic jobIds + the `photo_migrated_at` stamp make it safe & resumable.
 npm run worker          # run workers against your .env
 npm run migrate:enqueue # run the producer
 ```
+
+## App-side R2 (new uploads — not this worker)
+
+`lib/r2.ts` is the **request-path** R2 helper, the app equivalent of
+`worker/r2.ts` (same env, same `images/<table>/<id>.<ext>` key scheme). The
+public POST endpoints use it so new photos never land as base64 in Postgres:
+
+| Write path | Uploads via | Stores |
+|---|---|---|
+| `POST /api/missing` (`lib/missing.ts addMissing`) | `uploadPhotoDataUrl(_, "missing_persons", id)` | CDN URL in `photo` + `photo_migrated_at` |
+| `POST /api/reports` (`lib/store.ts addReport`) | `uploadPhotoDataUrl(_, "reports", id)` | CDN URL in `photo` + `photo_migrated_at` |
+| `POST /api/missing/[id]/found` (`markMissingFound`) | `uploadPhotoDataUrl(_, "resolution", id)` | CDN URL in `resolution_photo` |
+
+- **Policy:** if R2 is configured (`isR2Configured()` — all 5 `R2_*` vars set),
+  uploads MUST succeed; a failure **throws** and the endpoint does not confirm
+  the write (no silent base64 fallback). With R2 unconfigured (local dev /
+  memory store), the legacy base64-in-DB path is kept.
+- The three GET photo routes now **302-redirect** when `photo` holds a URL
+  (migrated or freshly R2-uploaded) instead of decoding base64 — required, since
+  this migration rewrites `photo` to CDN URLs while the app is live.
 
 ## Gotchas (learned the hard way — don't reintroduce)
 

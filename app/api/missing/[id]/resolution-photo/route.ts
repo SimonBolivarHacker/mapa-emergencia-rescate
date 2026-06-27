@@ -11,6 +11,10 @@ export async function GET(
   if (!photo) {
     return new Response("No encontrada", { status: 404 });
   }
+  // Foto migrada a R2: redirigimos al CDN en vez de servir bytes.
+  if ("redirectTo" in photo) {
+    return Response.redirect(photo.redirectTo, 302);
+  }
   return new Response(new Uint8Array(photo.buffer), {
     headers: {
       "Content-Type": photo.contentType,

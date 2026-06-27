@@ -51,3 +51,5 @@ _*.mts
 # bundles de diseño/referencia (capturas, mockups, exports) — no son parte de la app
 Emergencia nacional de búsqueda/
 Emergencia nacional de búsqueda.zip
+
+.claude/commands/*

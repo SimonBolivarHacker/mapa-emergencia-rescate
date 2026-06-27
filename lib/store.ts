@@ -1,4 +1,5 @@
 import { getSql, hasDbEnv } from "./db";
+import { isR2Configured, uploadPhotoDataUrl } from "./r2";
 import {
   REPORT_TYPE_KEYS,
   type EmergencyReport,
@@ -139,17 +140,27 @@ export async function addReport(input: NewReport): Promise<EmergencyReport> {
     throw new Error("DATABASE_URL no configurada: la persistencia es obligatoria.");
   }
   const { report, photo } = createReport(input);
+  // Si R2 está configurado, la foto va al CDN y guardamos la URL (no base64).
+  // Hard-fail: si la subida falla, el error sube y el endpoint no confirma.
+  let stored = photo;
+  let migratedAt: number | null = null;
+  if (photo && isR2Configured()) {
+    stored = await uploadPhotoDataUrl(photo, "reports", report.id);
+    migratedAt = Date.now();
+  }
   if (hasDbEnv()) {
     await ensureSchema();
     await getSql()`
-      INSERT INTO reports (id, type, lat, lng, place, affected, needs, photo, created_at)
+      INSERT INTO reports
+        (id, type, lat, lng, place, affected, needs, photo, photo_migrated_at, created_at)
       VALUES (
         ${report.id}, ${report.type}, ${report.lat}, ${report.lng},
-        ${report.place}, ${report.affected}, ${report.needs}, ${photo}, ${report.createdAt}
+        ${report.place}, ${report.affected}, ${report.needs},
+        ${stored}, ${migratedAt}, ${report.createdAt}
       )
     `;
   } else {
-    memoryStore.set(report.id, { ...report, photo });
+    memoryStore.set(report.id, { ...report, photo: stored });
   }
   return report;
 }
@@ -158,8 +169,14 @@ export interface PhotoData {
   contentType: string;
   buffer: Buffer;
 }
+/** Foto alojada en R2/CDN: el endpoint redirige en vez de servir bytes. */
+export interface RemotePhoto {
+  redirectTo: string;
+}
 
-export async function getReportPhoto(id: string): Promise<PhotoData | null> {
+export async function getReportPhoto(
+  id: string,
+): Promise<PhotoData | RemotePhoto | null> {
   let dataUrl: string | null = null;
   if (hasDbEnv()) {
     await ensureSchema();
@@ -171,6 +188,8 @@ export async function getReportPhoto(id: string): Promise<PhotoData | null> {
     dataUrl = memoryStore.get(id)?.photo ?? null;
   }
   if (!dataUrl) return null;
+  // Foto migrada a R2: `photo` es una URL del CDN → redirigir en vez de bytes.
+  if (/^https?:\/\//i.test(dataUrl)) return { redirectTo: dataUrl };
   const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
   if (!match) return null;
   return { contentType: match[1], buffer: Buffer.from(match[2], "base64") };

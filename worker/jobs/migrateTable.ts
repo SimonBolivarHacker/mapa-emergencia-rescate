@@ -15,17 +15,69 @@ import type { TableSpec } from "../tables";
 
 const BATCH = 500;
 
-/** Columns that actually exist in the source table, in ordinal order. */
-async function sourceColumns(src: Pool, table: string): Promise<string[]> {
+interface SourceColumn {
+  name: string;
+  /** Postgres type as reported by format_type (e.g. text, bigint, jsonb). */
+  type: string;
+  notNull: boolean;
+}
+
+/**
+ * Source columns with their types (format_type gives a CREATE-ready type string,
+ * resolving sequences/arrays/etc). Ordinal order so the target matches layout.
+ */
+async function sourceColumns(src: Pool, table: string): Promise<SourceColumn[]> {
   const { rows } = await src.query(
-    `select column_name from information_schema.columns
-     where table_schema='public' and table_name=$1 order by ordinal_position`,
+    `select a.attname as name,
+            format_type(a.atttypid, a.atttypmod) as type,
+            a.attnotnull as not_null
+       from pg_attribute a
+       join pg_class c on c.oid = a.attrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relname = $1
+        and a.attnum > 0 and not a.attisdropped
+      order by a.attnum`,
     [table],
   );
-  return rows.map((r) => r.column_name as string);
+  return rows.map((r) => ({
+    name: r.name as string,
+    type: r.type as string,
+    notNull: r.not_null as boolean,
+  }));
 }
 
 const ident = (c: string) => `"${c.replace(/"/g, '""')}"`;
+
+/**
+ * Make the target schema match the source: create the table if missing and add
+ * any columns it lacks (handles both "table doesn't exist" and column drift like
+ * donations.status). No NOT NULL/defaults on add — we copy real data anyway and
+ * don't want to block backfills. Then ensure the conflict key has a unique
+ * index so `ON CONFLICT (key)` resolves. Idempotent / re-runnable.
+ */
+async function ensureTargetSchema(
+  tgt: Pool,
+  table: string,
+  cols: SourceColumn[],
+  conflict: string[],
+): Promise<void> {
+  const defs = cols
+    .map((c) => `${ident(c.name)} ${c.type}${c.notNull ? " NOT NULL" : ""}`)
+    .join(", ");
+  await tgt.query(`CREATE TABLE IF NOT EXISTS ${ident(table)} (${defs})`);
+  // Add any columns missing on a pre-existing target table (NULLable, no default).
+  for (const c of cols) {
+    await tgt.query(
+      `ALTER TABLE ${ident(table)} ADD COLUMN IF NOT EXISTS ${ident(c.name)} ${c.type}`,
+    );
+  }
+  // ON CONFLICT (key) needs a unique constraint/index on exactly those columns.
+  const idxName = `mig_uniq_${table}_${conflict.join("_")}`.slice(0, 63);
+  await tgt.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS ${ident(idxName)} ` +
+      `ON ${ident(table)} (${conflict.map(ident).join(", ")})`,
+  );
+}
 
 export interface MigrateTableResult {
   table: string;
@@ -37,11 +89,16 @@ export async function migrateTable(spec: TableSpec): Promise<MigrateTableResult>
   const src = sourcePool();
   const tgt = targetPool();
 
-  const cols = await sourceColumns(src, spec.name);
-  if (cols.length === 0) {
+  const srcCols = await sourceColumns(src, spec.name);
+  if (srcCols.length === 0) {
     // Table doesn't exist in source — nothing to copy. (Target may still have it.)
     return { table: spec.name, read: 0, upserted: 0 };
   }
+  // Mirror the source schema onto the target before inserting (create table /
+  // add missing columns / ensure the conflict-key unique index).
+  await ensureTargetSchema(tgt, spec.name, srcCols, spec.conflict);
+
+  const cols = srcCols.map((c) => c.name);
   // Only conflict-update columns that aren't part of the key.
   const updateCols = cols.filter((c) => !spec.conflict.includes(c));
 

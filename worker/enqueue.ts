@@ -32,18 +32,30 @@ async function enqueueAllTables() {
   }
 }
 
-/** Block until the migrate-tables queue has nothing waiting/active. */
+/**
+ * Block until the migrate-tables queue has nothing waiting/active, then FAIL
+ * loudly if any table job ended up failed — otherwise we'd march on to photos
+ * and silently leave whole tables unmigrated (the hospitals/sync_runs/etc bug).
+ */
 async function waitForTables(timeoutMs = 1_800_000) {
   const q = tablesQueue();
   const start = Date.now();
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const counts = await q.getJobCounts("waiting", "active", "delayed", "paused");
     const pending =
       (counts.waiting || 0) + (counts.active || 0) + (counts.delayed || 0) + (counts.paused || 0);
-    if (pending === 0) return;
+    if (pending === 0) break;
     if (Date.now() - start > timeoutMs) throw new Error("table migration timed out");
     await new Promise((r) => setTimeout(r, 3000));
+  }
+  const failed = await q.getFailed();
+  if (failed.length > 0) {
+    const detail = failed
+      .map((j) => `${j.name}: ${j.failedReason ?? "unknown"}`)
+      .join("\n  ");
+    throw new Error(
+      `${failed.length} table migration job(s) failed — aborting before photos:\n  ${detail}`,
+    );
   }
 }
 
