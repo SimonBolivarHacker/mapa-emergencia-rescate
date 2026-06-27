@@ -50,7 +50,7 @@ function HeroAccessCard({
 
 export default function HeroSection() {
   const goMap = useCallback(() => scrollToSection("mapa"), []);
-  const goMissing = useCallback(() => scrollToSection("desaparecidas"), []);
+  const goMissing = useCallback(() => scrollToSection("e-directory"), []);
   const goHelp = useCallback(() => scrollToSection("tutorial"), []);
   const goVolunteer = useCallback(() => scrollToSection("equipo"), []);
 
@@ -76,7 +76,7 @@ export default function HeroSection() {
           aria-hidden
         />
 
-        <div className="relative z-10 mx-auto max-w-[1120px] px-4 py-10 text-center sm:px-6 sm:py-14">
+        <div className="relative z-10 mx-auto max-w-[1120px] px-4 py-8 text-center sm:px-6 sm:py-10">
           <h1
             className="mb-2.5 font-[family-name:var(--qi-font-display)] !text-white"
             style={{
@@ -98,7 +98,7 @@ export default function HeroSection() {
               textShadow: "0 1px 4px rgba(0,0,0,.3)",
             }}
           >
-            Selecciona una opción para recibir o brindar ayuda.
+            Da clic en una opción  para recibir o brindar ayuda.
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6 max-w-5xl mx-auto">

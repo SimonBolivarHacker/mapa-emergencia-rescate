@@ -47,7 +47,7 @@ type DirectoryTab = "personas" | "hospitales";
 
 const POLL_INTERVAL_MS = 8000;
 const LOW_BANDWIDTH_POLL_INTERVAL_MS = 45_000;
-const GRID_PAGE_SIZE = 16;
+const PERSON_PREVIEW_ROWS = 3;
 const HOSPITAL_PREVIEW_ROWS = 4;
 const MIN_SEARCH_LEN = 3;
 
@@ -90,7 +90,8 @@ function tabFromHash(hash: string): DirectoryTab | null {
     id === "personas" ||
     id === "desaparecidas" ||
     id === "desaparecidas-preview" ||
-    id === "e-directory"
+    id === "e-directory" ||
+    id === "localizados"
   ) {
     return "personas";
   }
@@ -98,7 +99,7 @@ function tabFromHash(hash: string): DirectoryTab | null {
 }
 
 function hashForTab(tab: DirectoryTab): string {
-  return tab === "hospitales" ? "#hospitales" : "#desaparecidas-preview";
+  return tab === "hospitales" ? "#hospitales" : "#e-directory";
 }
 
 function useHorizontalScroll(itemCount: number) {
@@ -278,8 +279,11 @@ function PersonasPreview() {
   const [selected, setSelected] = useState<MissingPerson | null>(null);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "found">("all");
   const gridRef = useRef<HTMLDivElement>(null);
   const skipScrollRef = useRef(true);
+  const gridCols = useHospitalGridColumns();
+  const pageSize = gridCols * PERSON_PREVIEW_ROWS;
   const network = useLowBandwidthMode(
     POLL_INTERVAL_MS,
     LOW_BANDWIDTH_POLL_INTERVAL_MS,
@@ -296,9 +300,9 @@ function PersonasPreview() {
   const fetchPeople = useCallback(async () => {
     try {
       const params = new URLSearchParams({
-        status: "active",
+        status: filter,
         page: String(page),
-        pageSize: String(GRID_PAGE_SIZE),
+        pageSize: String(pageSize),
       });
       if (debouncedQuery.trim().length >= MIN_SEARCH_LEN) {
         params.set("q", debouncedQuery.trim());
@@ -315,7 +319,15 @@ function PersonasPreview() {
     } catch {
       // se reintentará en el próximo ciclo
     }
-  }, [debouncedQuery, page]);
+  }, [debouncedQuery, page, pageSize, filter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize, debouncedQuery, filter]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(1, totalPages)));
+  }, [totalPages]);
 
   const fetchFoundTotal = useCallback(async () => {
     try {
@@ -390,14 +402,14 @@ function PersonasPreview() {
         setPeople((prev) =>
           prev.some((p) => p.id === data.person.id)
             ? prev
-            : [data.person, ...prev].slice(0, GRID_PAGE_SIZE),
+            : [data.person, ...prev].slice(0, pageSize),
         );
         setTotal((t) => t + 1);
       } else {
         fetchPeople();
       }
     },
-    [fetchPeople],
+    [fetchPeople, pageSize],
   );
 
   const handleMarkFound = useCallback(
@@ -468,9 +480,32 @@ function PersonasPreview() {
         <button
           type="button"
           onClick={() => setShowForm(true)}
-          className="e-btn e-btn-primary shrink-0 self-start px-5 py-2.5"
+          className="e-btn e-btn-primary shrink-0 self-end px-5 py-2.5 sm:self-start"
         >
           <span aria-hidden>＋</span> Quiero reportar
+        </button>
+      </div>
+
+      <div className="my-3 flex flex-wrap items-center justify-end gap-2">
+        <button 
+          onClick={() => { setFilter("all"); setPage(1); }}
+          className={`inline-flex items-center rounded-md border px-3 py-1 text-xs font-semibold transition-colors ${filter === "all" ? "border-slate-300 bg-slate-100 text-slate-800" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
+        >
+          Todas
+        </button>
+        <button 
+          onClick={() => { setFilter("active"); setPage(1); }}
+          className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-semibold transition-colors ${filter === "active" ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${filter === "active" ? "bg-amber-500" : "bg-amber-500/50"}`} aria-hidden />
+          Desaparecidas
+        </button>
+        <button 
+          onClick={() => { setFilter("found"); setPage(1); }}
+          className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-semibold transition-colors ${filter === "found" ? "border-blue-300 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${filter === "found" ? "bg-blue-500" : "bg-blue-500/50"}`} aria-hidden />
+          Encontradas
         </button>
       </div>
 
@@ -493,7 +528,19 @@ function PersonasPreview() {
         )}
       </div>
 
-      <div ref={gridRef} className="e-person-grid" role="list">
+      <div
+        ref={gridRef}
+        className="e-person-grid"
+        style={{
+          gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+          ...(gridCols === 3
+            ? {
+                gridTemplateRows: `repeat(${PERSON_PREVIEW_ROWS}, var(--e-person-card-height))`,
+              }
+            : {}),
+        }}
+        role="list"
+      >
         {people.length === 0 ? (
           <div
             className="e-card col-span-full flex flex-col items-center justify-center gap-1 border-dashed p-8 text-center text-[var(--etext2)]"

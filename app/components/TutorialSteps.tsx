@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { REPORT_TYPES, type ReportType } from "@/lib/types";
 import { AlertTriangle, BookOpen, Heart, Home, ChevronRight } from "lucide-react";
 
 export default function TutorialSteps() {
@@ -10,10 +9,10 @@ export default function TutorialSteps() {
   return (
     <section
       id="tutorial"
-      className="w-full scroll-mt-20 border-b border-[var(--eborder)] py-6"
+      className="w-full scroll-mt-20 border-b border-[var(--eborder)] py-6 px-4 sm:px-6"
       style={{ backgroundColor: "rgb(249, 250, 251)" }}
     >
-      <div className="mx-auto w-full max-w-[1120px] px-4 py-10 sm:px-6">
+      <div className="mx-auto w-full max-w-[1120px] py-10">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div className="mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[rgb(17,24,39)] text-center m-[0px_0px_8px] leading-[1.1]">¿Necesitas ayuda?</h2>
@@ -23,7 +22,8 @@ export default function TutorialSteps() {
           </div>
         </div>
 
-        <div className="max-w-[712px] mx-auto bg-white border border-[#e5e7eb] rounded-[20px] p-7 sm:p-8 shadow-[0_1px_4px_rgba(0,0,0,0.06)] mb-7">
+        {/* TODO: Formulario en desarrollo, oculto temporalmente */}
+        <div className="hidden max-w-[712px] mx-auto bg-white border border-[#e5e7eb] rounded-[20px] p-7 sm:p-8 shadow-[0_1px_4px_rgba(0,0,0,0.06)] mb-7">
           <div className="flex items-center gap-[10px] mb-[18px]">
             <div className="w-8 h-8 bg-red-100 rounded-[8px] flex items-center justify-center shrink-0">
               <AlertTriangle size={16} color="#B91C1C" strokeWidth={2.2} />
@@ -110,10 +110,10 @@ export default function TutorialSteps() {
           </form>
         </div>
 
-        <div className="e-ayuda-3cards mt-6 max-w-[712px] mx-auto mb-20">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-8 mt-6 w-full mb-20">
           <Link
             href="/guia"
-            className="bg-[var(--ebg)] border-[1.5px] border-[var(--eborder)] rounded-[16px] p-[14px_20px] flex items-center gap-[12px] cursor-pointer text-left w-full hover:bg-[var(--einput)] transition duration-150"
+            className="bg-white rounded-[24px] p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] flex items-center gap-[12px] cursor-pointer text-left w-full hover:-translate-y-1 transition-transform"
           >
             <div className="w-[38px] h-[38px] bg-[#fef3c7] rounded-[10px] flex items-center justify-center shrink-0">
               <BookOpen size={18} color="#92400E" strokeWidth={2} />
@@ -126,7 +126,7 @@ export default function TutorialSteps() {
           </Link>
           <Link
             href="/apoyo-global"
-            className="bg-[var(--ebg)] border-[1.5px] border-[var(--eborder)] rounded-[16px] p-[14px_20px] flex items-center gap-[12px] cursor-pointer text-left w-full hover:bg-[var(--einput)] transition duration-150"
+            className="bg-white rounded-[24px] p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] flex items-center gap-[12px] cursor-pointer text-left w-full hover:-translate-y-1 transition-transform"
           >
             <div className="w-[38px] h-[38px] bg-[#ebf0ff] rounded-[10px] flex items-center justify-center shrink-0">
               <Heart size={18} color="#1649CC" strokeWidth={2} />
@@ -139,7 +139,7 @@ export default function TutorialSteps() {
           </Link>
           <a
             href="/acopio"
-            className="bg-[var(--ebg)] border-[1.5px] border-[var(--eborder)] rounded-[16px] p-[14px_20px] flex items-center gap-[12px] cursor-pointer text-left w-full hover:bg-[var(--einput)] transition duration-150"
+            className="bg-white rounded-[24px] p-8 shadow-[0_4px_24px_rgba(0,0,0,0.04)] flex items-center gap-[12px] cursor-pointer text-left w-full hover:-translate-y-1 transition-transform"
           >
             <div className="w-[38px] h-[38px] bg-[#e3f5f0] rounded-[10px] flex items-center justify-center shrink-0">
               <Home size={18} color="#0A8A6A" strokeWidth={2} />
@@ -150,59 +150,6 @@ export default function TutorialSteps() {
             </div>
             <ChevronRight size={14} className="text-[var(--etext3)]" strokeWidth={2.5} />
           </a>
-        </div>
-
-        <div className="e-card mt-6 p-5">
-          <h3 className="qi-h4">🏷️ Tipos de marcador disponibles</h3>
-          <p className="mt-1 text-xs text-[var(--etext2)]">
-            Elige el que mejor describa la situación. Cada color e icono se
-            verá en el mapa.
-          </p>
-          <div className="e-htypes mt-3">
-            {(Object.keys(REPORT_TYPES) as ReportType[]).map((type) => {
-              const meta = REPORT_TYPES[type];
-              return (
-                <div
-                  key={type}
-                  className="flex items-center gap-2 rounded-xl border border-[var(--eborder)] bg-[var(--einput)] p-2"
-                >
-                  <span
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-base text-white shadow-sm"
-                    style={{ background: meta.color }}
-                    aria-hidden
-                  >
-                    {meta.icon}
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--etext)]">
-                    {meta.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-semibold text-emerald-900">
-              ✅ Antes de publicar
-            </p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-emerald-900">
-              <li>Asegúrate de que la ubicación esté correcta.</li>
-              <li>Indica claramente qué tipo de ayuda se necesita.</li>
-              <li>Si tienes una foto del lugar, súbela.</li>
-            </ul>
-          </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-semibold text-amber-900">
-              ⚠️ Evita confundir el mapa
-            </p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-amber-900">
-              <li>No envíes reportes falsos ni duplicados.</li>
-              <li>Si ya hay un punto similar cerca, no lo repitas.</li>
-              <li>Avisa cuando una emergencia ya fue atendida.</li>
-            </ul>
-          </div>
         </div>
       </div>
     </section>

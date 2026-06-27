@@ -535,7 +535,7 @@ a:focus-visible,
 }
 
 .e-map-grid {
-	--e-map-height: 600px;
+	--e-map-height: 720px;
 	display: grid;
 	grid-template-columns: 1fr;
 	border: 1.5px solid var(--eborder);
@@ -546,7 +546,7 @@ a:focus-visible,
 
 @media (min-width: 760px) {
 	.e-map-grid {
-		grid-template-columns: 1fr 360px;
+		grid-template-columns: 1fr 320px;
 	}
 }
 
@@ -565,17 +565,52 @@ a:focus-visible,
 		/* Misma altura que el mapa: el encabezado, las cajas y las pestañas quedan
        fijos y solo la lista de reportes hace scroll interno (la página no crece
        hacia abajo al cargar más). */
-		height: var(--e-map-height, 600px);
+		height: var(--e-map-height, 720px);
 	}
 }
 
 .e-leaflet-wrap {
-	height: 280px;
+	height: 360px;
 }
 
 @media (min-width: 760px) {
 	.e-leaflet-wrap {
-		height: var(--e-map-height, 600px);
+		height: var(--e-map-height, 720px);
+	}
+}
+
+.e-map-type-filters {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+.e-map-type-filters::-webkit-scrollbar {
+	display: none;
+}
+
+/* Tooltip de cada chip de tipo: visible al pasar el cursor o enfocar con
+   teclado. Se define en CSS plano para no depender del orden de las variantes
+   de Tailwind (opacity-0 + group-hover puede no resolverse de forma fiable). */
+.e-map-type-tip {
+	opacity: 0;
+	visibility: hidden;
+	transform: translateX(-50%) translateY(4px);
+	transition:
+		opacity 0.15s ease,
+		visibility 0.15s ease,
+		transform 0.15s ease;
+}
+
+.e-map-type-chip-wrap:hover .e-map-type-tip,
+.e-map-type-chip-wrap:focus-within .e-map-type-tip {
+	opacity: 1;
+	visibility: visible;
+	transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.e-map-type-tip {
+		transition: none;
 	}
 }
 
@@ -918,10 +953,12 @@ a:focus-visible,
 }
 
 .e-person-grid {
+	--e-person-card-scale: 0.9;
+	--e-person-card-height: calc(13.25rem * 0.9 * var(--e-person-card-scale) * 0.85);
 	display: grid;
 	grid-template-columns: 1fr;
-	grid-auto-rows: 13.25rem;
-	gap: 0.75rem;
+	grid-auto-rows: var(--e-person-card-height);
+	gap: calc(0.75rem * var(--e-person-card-scale));
 	margin-top: 1.25rem;
 }
 
@@ -933,8 +970,9 @@ a:focus-visible,
 
 @media (min-width: 960px) {
 	.e-person-grid {
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 0.875rem;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-rows: repeat(3, var(--e-person-card-height));
+		gap: calc(0.875rem * var(--e-person-card-scale));
 	}
 }
 
@@ -946,12 +984,12 @@ a:focus-visible,
 	gap: 0;
 	width: 100%;
 	height: 100%;
-	min-height: 13.25rem;
+	min-height: var(--e-person-card-height);
 	padding: 0;
 	overflow: hidden;
-	border: 1.5px solid var(--eborder);
-	border-left: 4px solid #f59e0b;
-	border-radius: 16px;
+	border: calc(1.5px * var(--e-person-card-scale, 0.9)) solid var(--eborder);
+	border-left: calc(4px * var(--e-person-card-scale, 0.9)) solid #f59e0b;
+	border-radius: calc(16px * var(--e-person-card-scale, 0.9));
 	background: var(--esurf);
 	box-shadow: var(--eshadow);
 	text-align: left;
@@ -969,24 +1007,25 @@ a:focus-visible,
 	position: relative;
 	flex: 0 0 38%;
 	align-self: stretch;
-	min-width: 4.75rem;
-	max-width: 7.75rem;
+	min-width: calc(4.75rem * var(--e-person-card-scale, 0.9));
+	max-width: calc(7.75rem * var(--e-person-card-scale, 0.9));
 	min-height: 0;
 	overflow: hidden;
 	background: var(--einput);
-	border-top-left-radius: 13px;
-	border-bottom-left-radius: 13px;
+	border-top-left-radius: calc(13px * var(--e-person-card-scale, 0.9));
+	border-bottom-left-radius: calc(13px * var(--e-person-card-scale, 0.9));
 }
 
 .e-person-card__badge {
 	position: absolute;
-	top: 0.35rem;
-	right: 0.35rem;
+	top: calc(0.35rem * var(--e-person-card-scale, 0.9));
+	right: calc(0.35rem * var(--e-person-card-scale, 0.9));
 	z-index: 1;
 	border-radius: 999px;
 	background: #fef3c7;
-	padding: 0.15rem 0.45rem;
-	font-size: 8px;
+	padding: calc(0.15rem * var(--e-person-card-scale, 0.9))
+		calc(0.45rem * var(--e-person-card-scale, 0.9));
+	font-size: calc(8px * var(--e-person-card-scale, 0.9));
 	font-weight: 800;
 	letter-spacing: 0.04em;
 	color: #92400e;
@@ -1009,7 +1048,7 @@ a:focus-visible,
 	display: grid;
 	place-items: center;
 	color: var(--etext3);
-	font-size: 2rem;
+	font-size: calc(2rem * var(--e-person-card-scale, 0.9));
 	background: var(--einput);
 }
 
@@ -1017,11 +1056,13 @@ a:focus-visible,
 	display: flex;
 	flex: 1;
 	flex-direction: column;
-	gap: 0.35rem;
+	gap: calc(0.35rem * var(--e-person-card-scale, 0.9));
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
-	padding: 0.75rem 0.875rem 0.625rem;
+	padding: calc(0.75rem * var(--e-person-card-scale, 0.9))
+		calc(0.875rem * var(--e-person-card-scale, 0.9))
+		calc(0.625rem * var(--e-person-card-scale, 0.9));
 }
 
 .e-person-card__title-row {
@@ -1035,36 +1076,39 @@ a:focus-visible,
 
 @media (min-width: 960px) {
 	.e-person-card__content {
-		padding: 0.625rem 0.625rem 0.5rem;
-		gap: 0.35rem;
+		padding: calc(0.625rem * var(--e-person-card-scale, 0.9))
+			calc(0.625rem * var(--e-person-card-scale, 0.9))
+			calc(0.5rem * var(--e-person-card-scale, 0.9));
+		gap: calc(0.35rem * var(--e-person-card-scale, 0.9));
 	}
 
 	.e-person-card__name {
-		font-size: 13px;
+		font-size: calc(13px * var(--e-person-card-scale, 0.9));
 	}
 
 	.e-person-card__age,
 	.e-person-card__row,
 	.e-person-card__note,
 	.e-person-card__footer {
-		font-size: 11px;
+		font-size: calc(11px * var(--e-person-card-scale, 0.9));
 	}
 
 	.e-person-card__badge {
-		font-size: 7px;
-		padding: 0.12rem 0.35rem;
+		font-size: calc(7px * var(--e-person-card-scale, 0.9));
+		padding: calc(0.12rem * var(--e-person-card-scale, 0.9))
+			calc(0.35rem * var(--e-person-card-scale, 0.9));
 	}
 }
 
 .e-person-card__name {
-	font-size: 15px;
+	font-size: calc(15px * var(--e-person-card-scale, 0.9));
 	font-weight: 700;
 	line-height: 1.3;
 	color: var(--etext);
 }
 
 .e-person-card__age {
-	font-size: 13px;
+	font-size: calc(13px * var(--e-person-card-scale, 0.9));
 	font-weight: 500;
 	color: var(--etext2);
 }
@@ -1072,8 +1116,8 @@ a:focus-visible,
 .e-person-card__row {
 	display: flex;
 	align-items: flex-start;
-	gap: 0.35rem;
-	font-size: 12px;
+	gap: calc(0.35rem * var(--e-person-card-scale, 0.9));
+	font-size: calc(12px * var(--e-person-card-scale, 0.9));
 	line-height: 1.35;
 	min-height: 0;
 }
@@ -1102,7 +1146,7 @@ a:focus-visible,
 }
 
 .e-person-card__note {
-	font-size: 12px;
+	font-size: calc(12px * var(--e-person-card-scale, 0.9));
 	font-style: italic;
 	line-height: 1.35;
 	color: var(--etext2);
@@ -1116,8 +1160,8 @@ a:focus-visible,
 .e-person-card__footer {
 	margin-top: auto;
 	flex-shrink: 0;
-	padding-top: 0.25rem;
-	font-size: 12px;
+	padding-top: calc(0.25rem * var(--e-person-card-scale, 0.9));
+	font-size: calc(12px * var(--e-person-card-scale, 0.9));
 	color: var(--etext3);
 }
 
@@ -1851,7 +1895,7 @@ input[type="search"]::-webkit-search-decoration {
 
 @media (max-width: 767px) {
 	.leaflet-top.leaflet-right {
-		top: 7rem;
+		top: 9.5rem;
 	}
 }
 
