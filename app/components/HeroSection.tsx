@@ -100,10 +100,10 @@ export default function HeroSection() {
               textShadow: "0 1px 4px rgba(0,0,0,.3)",
             }}
           >
-            Selecciona una opción para recibir o brindar ayuda.
+            Da clic en una opción  para recibir o brindar ayuda.
           </p>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
             <HeroAccessCard
               emoji="🔎"
               title="Buscar personas"
