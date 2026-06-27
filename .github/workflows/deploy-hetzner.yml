@@ -152,6 +152,7 @@ jobs:
             NEXT_PUBLIC_ASSET_PREFIX=${{ secrets.NEXT_PUBLIC_ASSET_PREFIX }}
             NEXT_PUBLIC_OPENPANEL_CLIENT_ID=${{ secrets.NEXT_PUBLIC_OPENPANEL_CLIENT_ID }}
             NEXT_PUBLIC_OPENPANEL_PRODUCTION_HOST=${{ vars.NEXT_PUBLIC_OPENPANEL_PRODUCTION_HOST || 'terremotovenezuela.app' }}
+            NEXT_PUBLIC_OPENPANEL_DASHBOARD_URL=${{ secrets.NEXT_PUBLIC_OPENPANEL_DASHBOARD_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
