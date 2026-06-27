@@ -3,6 +3,7 @@ import EmergencyApp from "./components/EmergencyApp";
 import { HeroDesktopNav, MobileStickyNav } from "./components/SectionNav";
 import SiteFooter from "./components/SiteFooter";
 import HeroSection from "./components/HeroSection";
+import HelpSection from "./components/HelpSection";
 import AlertTicker from "./components/AlertTicker";
 import { REPORT_TYPES, type ReportType } from "@/lib/types";
 
@@ -166,6 +167,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <HelpSection />
 
         <EmergencyApp />
 
