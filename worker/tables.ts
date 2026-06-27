@@ -38,6 +38,9 @@ export const TABLES: TableSpec[] = [
   // Append-only / dedup / logs — insert-or-ignore.
   { name: "report_confirmations", conflict: ["report_id", "ip_hash"], policy: "ignore" },
   { name: "click_counter_dedup", conflict: ["counter_key", "ip_hash"], policy: "ignore" },
+  // donations has a `status` column, but the app never UPDATEs it (insert-only;
+  // admin route is GET-only). Append-only in practice -> ignore is correct.
+  // If a status-mutation feature ships later, switch this to "update".
   { name: "donations", conflict: ["id"], policy: "ignore" },
   { name: "sync_runs", conflict: ["id"], policy: "ignore" },
 ];

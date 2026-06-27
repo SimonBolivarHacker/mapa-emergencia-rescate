@@ -26,7 +26,14 @@ const HEARTBEAT_MS = 600_000; // 10 min
 const PHOTO_SCAN_BATCH = 1000;
 
 async function enqueueAllTables() {
+  const q = tablesQueue();
   for (const t of TABLES) {
+    // Deterministic jobId (`tbl-<name>`) dedupes — but a prior COMPLETED or
+    // FAILED job with that id makes `add` a silent no-op, so a re-run would
+    // never re-execute (e.g. tables that failed before a code fix shipped).
+    // Remove the old record first so every producer run actually re-runs the
+    // table copy against current code/schema. Idempotent: copy is upsert.
+    await q.remove(`tbl-${t.name}`).catch(() => {});
     const job = await enqueueTable(t.name);
     console.log(`[enqueue] table ${t.name} (job ${job.id})`);
   }
