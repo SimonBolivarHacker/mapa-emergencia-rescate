@@ -82,6 +82,7 @@ export const missingPersons = pgTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     age: integer("age"),
+    nationality: text("nationality").notNull().default(""),
     description: text("description").notNull().default(""),
     lastSeen: text("last_seen").notNull().default(""),
     contact: text("contact").notNull().default(""),

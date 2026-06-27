@@ -5,6 +5,7 @@ import {
   isValidPhotoDataUrl,
   listMissingPage,
   MAX_NAME,
+  MAX_NATIONALITY,
   MAX_PHOTO_CHARS,
   MIN_SEARCH_LEN,
   type MissingStatusFilter,
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
   let body: {
     name?: string;
     age?: number | string | null;
+    nationality?: string | null;
     description?: string;
     lastSeen?: string;
     contact?: string;
@@ -189,6 +191,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const nationality =
+    typeof body.nationality === "string" ? body.nationality.trim() : "";
+  if (nationality.length > MAX_NATIONALITY) {
+    return NextResponse.json(
+      { error: `La nacionalidad no puede superar ${MAX_NATIONALITY} caracteres.` },
+      { status: 400 },
+    );
+  }
+
   if (body.photo) {
     if (typeof body.photo !== "string" || !isValidPhotoDataUrl(body.photo)) {
       return NextResponse.json(
@@ -210,6 +221,7 @@ export async function POST(request: Request) {
     const person = await addMissing({
       name,
       age: body.age,
+      nationality,
       description: body.description,
       lastSeen: body.lastSeen,
       contact: body.contact,
