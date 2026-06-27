@@ -12,6 +12,32 @@ export const dynamic = "force-dynamic";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
+/**
+ * @swagger
+ * /api/readyz:
+ *   get:
+ *     tags: [system]
+ *     summary: Readiness probe; verifica que la DB esté accesible (gate de despliegue zero-downtime)
+ *     responses:
+ *       200:
+ *         description: Listo para recibir tráfico. `db` indica el estado ("up" o "disabled" en modo demo)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 db: { type: string, enum: [up, disabled] }
+ *       503:
+ *         description: DB inaccesible; el pod no está listo y queda fuera de rotación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *                 db: { type: string, enum: [down] }
+ */
 export async function GET() {
   // No DB configured (demo/in-memory mode) -> the app can still serve, so
   // report ready. Matches the app's documented "modo demo" fallback.

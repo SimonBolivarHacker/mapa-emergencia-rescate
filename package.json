@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node --import tsx scripts/gen-openapi.mts",
     "build": "next build",
+    "openapi": "node --import tsx scripts/gen-openapi.mts",
     "start": "next start",
     "lint": "eslint",
     "worker": "node --import tsx worker/index.ts",
@@ -24,6 +26,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
+    "next-swagger-doc": "^0.4.1",
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
