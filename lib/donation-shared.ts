@@ -3,6 +3,7 @@ export const PAYPAL_DONATION_URL =
 
 export const MIN_DONATION_CENTS = 100;
 export const MAX_DONATION_CENTS = 1_000_000;
+export const MONTHLY_DONATION_GOAL_CENTS = 80_000;
 
 export interface Donation {
   id: string;
@@ -16,6 +17,11 @@ export interface DonationStats {
   totalCents: number;
   last24hCount: number;
   last24hCents: number;
+}
+
+export interface DonationMonthlyStats {
+  raisedCents: number;
+  goalCents: number;
 }
 
 export function validateDonationInput(input: {

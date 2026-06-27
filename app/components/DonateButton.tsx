@@ -17,7 +17,7 @@ type DonateNavButtonProps = {
   onAfterDonate?: () => void;
 };
 
-function DonateModal({
+export function DonateModal({
   open,
   onClose,
   onSuccess,

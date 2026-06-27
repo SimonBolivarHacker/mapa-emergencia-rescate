@@ -1,14 +1,23 @@
 import { getSql, hasDbEnv } from "./db";
-import type { Donation, DonationStats } from "./donation-shared";
+import {
+  MONTHLY_DONATION_GOAL_CENTS,
+  type Donation,
+  type DonationStats,
+} from "./donation-shared";
 
 export {
   PAYPAL_DONATION_URL,
   MIN_DONATION_CENTS,
   MAX_DONATION_CENTS,
+  MONTHLY_DONATION_GOAL_CENTS,
   validateDonationInput,
   formatDonationUsd,
 } from "./donation-shared";
-export type { Donation, DonationStats } from "./donation-shared";
+export type {
+  Donation,
+  DonationStats,
+  DonationMonthlyStats,
+} from "./donation-shared";
 
 interface DonationRow {
   id: string;
@@ -137,6 +146,41 @@ export async function listAllDonations(): Promise<Donation[]> {
   }
 
   return [...memoryDonations];
+}
+
+function startOfCurrentMonthMs(now = Date.now()): number {
+  const date = new Date(now);
+  date.setDate(1);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+export async function getMonthlyDonationStats(): Promise<{
+  raisedCents: number;
+  goalCents: number;
+}> {
+  const goalCents = MONTHLY_DONATION_GOAL_CENTS;
+  const monthStart = startOfCurrentMonthMs();
+
+  if (hasDbEnv()) {
+    await ensureSchema();
+    const rows = (await getSql()`
+      SELECT COALESCE(SUM(amount_usd), 0)::int AS raised_cents
+      FROM donations
+      WHERE created_at >= ${monthStart}
+    `) as { raised_cents: number }[];
+
+    return {
+      raisedCents: Number(rows[0]?.raised_cents ?? 0),
+      goalCents,
+    };
+  }
+
+  const raisedCents = memoryDonations
+    .filter((donation) => donation.createdAt >= monthStart)
+    .reduce((sum, donation) => sum + donation.amountCents, 0);
+
+  return { raisedCents, goalCents };
 }
 
 export async function getDonationStats(): Promise<DonationStats> {

@@ -24,3 +24,7 @@ export function contactMailto(subject?: string): string {
 export function psychologyHelpUrl(): string {
   return process.env.NEXT_PUBLIC_PSYCHOLOGY_HELP_URL ?? PSYCHOLOGY_HELP_URL;
 }
+
+/** Transparencia de gastos operativos de la plataforma (configurable en Vercel). */
+export const PLATFORM_EXPENSES_URL =
+  process.env.NEXT_PUBLIC_EXPENSES_URL ?? "/contacto";
