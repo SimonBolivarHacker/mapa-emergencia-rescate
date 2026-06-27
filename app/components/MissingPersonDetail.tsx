@@ -39,7 +39,22 @@ function shareUrl(_person: MissingPerson): string {
   return `${window.location.origin}/#e-directory`;
 }
 
+function shareTitle(person: MissingPerson): string {
+  return person.status === "found"
+    ? `Ya localizaron a ${person.name}`
+    : `Buscamos a ${person.name}`;
+}
+
 function shareText(person: MissingPerson): string {
+  // Ya localizada: el texto de búsqueda no aplica, se comparte la buena noticia.
+  // Fraseo neutro en género ("localizaron a") porque la persona puede ser
+  // hombre o mujer.
+  if (person.status === "found") {
+    return [
+      `✅ ¡Buenas noticias! Ya localizaron a ${person.name}, está a salvo.`,
+      "Gracias a todos por ayudar a difundir 🙏",
+    ].join(" ");
+  }
   const parts = [
     `🚨 Buscamos a ${person.name}`,
     person.age !== null ? `${person.age} años.` : null,
@@ -134,11 +149,11 @@ export default function MissingPersonDetail({
       return;
     }
     try {
-      await navigator.share({ title: `Buscamos a ${person.name}`, text, url });
+      await navigator.share({ title: shareTitle(person), text, url });
     } catch {
       /* el usuario canceló */
     }
-  }, [copyShare, person.name, text, url]);
+  }, [copyShare, person, text, url]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
