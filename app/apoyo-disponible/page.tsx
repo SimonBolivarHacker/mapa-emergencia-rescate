@@ -236,6 +236,20 @@ export default function ApoyoPage() {
                 #MascotasTerremotoVenezuela en Twitter/X e Instagram
               </p>
             </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="font-bold text-slate-900">Mascotas por Venezuela</p>
+              <p className="text-[13px] leading-relaxed text-slate-500">
+                Plataforma de rescate y reunificación de mascotas afectadas
+              </p>
+              <a
+                href="https://www.mascotasporvenezuela.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center justify-center rounded-full bg-[#c41a1a] px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700"
+              >
+                Visitar sitio
+              </a>
+            </div>
           </Card>
 
           <Card
