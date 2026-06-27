@@ -2,7 +2,12 @@ node_modules
 .next
 .git
 .github
-infra
+# infra/ es solo tofu/k8s y NO va en la imagen... EXCEPTO infra/db, que ahora es
+# código de runtime: el esquema Drizzle (lib/drizzle.ts importa schema.ts) y las
+# migraciones .sql que aplica el Job migrate. Se excluye todo infra/ menos db/.
+infra/*
+!infra/db
+infra/db/drizzle.config.ts
 *.md
 Emergencia nacional de búsqueda
 .env*
