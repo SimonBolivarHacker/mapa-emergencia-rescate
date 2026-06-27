@@ -40,6 +40,9 @@ yarn-error.log*
 *.sql
 *.dump
 *.sql.gz
+# ...pero las migraciones de Drizzle SÍ se versionan (son código, deben ir en la
+# imagen para que el Job migrate las aplique).
+!infra/db/migrations/*.sql
 
 # typescript
 *.tsbuildinfo
