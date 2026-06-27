@@ -140,7 +140,10 @@ jobs:
           TF_VAR_valkey_password: ${{ secrets.VALKEY_PASSWORD }}
         run: |
           set -euo pipefail
-          tofu init -input=false
+          # -lockfile=readonly: CI must use the committed .terraform.lock.hcl as-is
+          # and FAIL if it doesn't match — never silently update it. The lock is
+          # generated/updated locally and reviewed in PRs (best practice).
+          tofu init -input=false -lockfile=readonly
           tofu apply -input=false -auto-approve
           echo "::notice::Provision done. Set these repo secrets from the outputs below:"
           echo "  DATABASE_URL          = $(tofu output -raw database_url)"
