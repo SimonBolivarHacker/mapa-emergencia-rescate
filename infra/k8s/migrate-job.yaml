@@ -1,0 +1,38 @@
+# Gated schema/migrate Job — PLACEHOLDER (intentionally not wired yet).
+#
+# ponytail: this app has NO explicit migrations. It creates its schema lazily
+# (CREATE TABLE IF NOT EXISTS in lib/*.ts on first query — see lib/store.ts
+# ensureSchema()). So a gated migrate step would today be a no-op, and adding a
+# fake one is over-engineering. The schema simply self-creates on first request
+# against a fresh DB.
+#
+# This file documents WHERE the gated migrate step goes for when migrations
+# become explicit (e.g. a destructive/expand-contract change that must NOT rely
+# on lazy creation). At that point:
+#   1. add an idempotent `npm run migrate` (or a migrations runner),
+#   2. uncomment the Job below, point its command at it,
+#   3. in CI: run this Job and BLOCK the roll on its success
+#      (`kubectl wait --for=condition=complete job/migrate-<sha>`),
+#   4. keep migrations backward-compatible (expand-contract): the OLD pods are
+#      still serving during the roll, so new schema must work with old code.
+#
+# --- uncomment when explicit migrations exist ---
+# apiVersion: batch/v1
+# kind: Job
+# metadata:
+#   name: migrate            # CI appends -<sha> for an immutable per-deploy name
+#   namespace: mapa
+# spec:
+#   backoffLimit: 2
+#   ttlSecondsAfterFinished: 600
+#   template:
+#     metadata:
+#       labels: { app: mapa, role: migrate }
+#     spec:
+#       restartPolicy: Never
+#       containers:
+#         - name: migrate
+#           image: ghcr.io/OWNER/REPO:latest   # same :<sha> as the Deployment
+#           envFrom:
+#             - secretRef: { name: app-env }
+#           command: ["npm", "run", "migrate"]

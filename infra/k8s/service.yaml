@@ -1,0 +1,47 @@
+# Namespace + Service.
+#
+# The Service of type LoadBalancer is what makes the Hetzner cloud-controller
+# -manager (installed by hetzner-k3s) auto-provision a real Hetzner Load
+# Balancer pointing at the app pods over the private network. The annotations
+# configure TLS termination (managed Let's Encrypt) and the health check at
+# the LB, mirroring the Hermes target-group health check.
+#
+# NOTE: set the cert/hostname annotations to your real domain before relying on
+# managed TLS. Until then the LB serves HTTP on :80.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mapa
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: mapa
+  annotations:
+    # Provision the LB in the same location as the nodes.
+    load-balancer.hetzner.cloud/location: "nbg1"
+    # Route to pods over the private network (no public pod IPs).
+    load-balancer.hetzner.cloud/use-private-ip: "true"
+    load-balancer.hetzner.cloud/name: "mapa-lb"
+    # Active health check — the LB only sends traffic to Ready pods.
+    load-balancer.hetzner.cloud/health-check-protocol: "http"
+    load-balancer.hetzner.cloud/health-check-port: "3000"
+    load-balancer.hetzner.cloud/health-check-http-path: "/api/readyz"
+    load-balancer.hetzner.cloud/health-check-interval: "15s"
+    load-balancer.hetzner.cloud/health-check-retries: "2"
+    # --- Managed TLS (uncomment + set once DNS/domain is ready) ---
+    # load-balancer.hetzner.cloud/hostname: "app.example.com"
+    # load-balancer.hetzner.cloud/http-redirect-http: "true"
+    # load-balancer.hetzner.cloud/protocol: "https"
+    # load-balancer.hetzner.cloud/uses-proxyprotocol: "false"
+    # load-balancer.hetzner.cloud/certificate-type: "managed"
+spec:
+  type: LoadBalancer
+  selector:
+    app: mapa
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3000

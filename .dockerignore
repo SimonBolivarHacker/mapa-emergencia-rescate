@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.github
+infra
+*.md
+Emergencia nacional de búsqueda
+.env*
+!.env.example
+npm-debug.log*
+.DS_Store
+coverage
+.vscode
+.idea

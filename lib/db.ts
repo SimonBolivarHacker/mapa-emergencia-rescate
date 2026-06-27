@@ -5,26 +5,31 @@ export function hasDbEnv(): boolean {
   return Boolean(process.env.DATABASE_URL);
 }
 
-/** Detecta una conexión a un Postgres local (desarrollo). */
-function isLocalUrl(url: string): boolean {
+/**
+ * ¿La URL apunta a Neon (driver HTTP) o a un Postgres plano por TCP?
+ *
+ * El driver `neon()` habla SQL-sobre-HTTP contra el endpoint de Neon, así que
+ * NO puede conectarse a un Postgres normal (localhost en desarrollo, o el VPS
+ * de Postgres en Hetzner en producción). Sólo usamos `neon()` cuando el host es
+ * de Neon; para cualquier otro Postgres usamos `node-postgres` (TCP). Detectar
+ * por host (no por "localhost") es lo que permite correr contra el Postgres
+ * privado de Hetzner además de en local.
+ */
+function isNeonUrl(url: string): boolean {
   try {
-    const host = new URL(url).hostname;
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+    return new URL(url).hostname.endsWith(".neon.tech");
   } catch {
     return false;
   }
 }
 
 /**
- * Adaptador para desarrollo local: el driver HTTP de Neon (`neon()`) habla con
- * el endpoint SQL-sobre-HTTP de Neon, así que no puede conectarse a un Postgres
- * local plano. Cuando `DATABASE_URL` apunta a localhost usamos `node-postgres`
- * por TCP, exponiendo la misma interfaz de template tag que usa el resto del
- * código (`sql\`...\``) y devolviendo el array de filas, igual que Neon con
- * `fullResults: false`. `pg` solo se carga en este caso (es devDependency y
- * está en `serverExternalPackages`), por lo que producción no se ve afectada.
+ * Adaptador `node-postgres` (TCP) que expone la misma interfaz de template tag
+ * que el resto del código (`sql\`...\``) y devuelve el array de filas, igual que
+ * Neon con `fullResults: false`. Se usa para todo Postgres plano: desarrollo
+ * local y el VPS de Postgres privado en Hetzner.
  */
-function createLocalSql(url: string): NeonQueryFunction<false, false> {
+function createTcpSql(url: string): NeonQueryFunction<false, false> {
   const require = createRequire(import.meta.url);
   const { Pool, types } = require("pg") as typeof import("pg");
   // BIGINT (oid 20) llega como string por defecto; Neon lo entrega como número.
@@ -51,7 +56,7 @@ let _sql: NeonQueryFunction<false, false> | null = null;
 export function getSql(): NeonQueryFunction<false, false> {
   if (!_sql) {
     const url = process.env.DATABASE_URL!;
-    _sql = isLocalUrl(url) ? createLocalSql(url) : neon(url);
+    _sql = isNeonUrl(url) ? neon(url) : createTcpSql(url);
   }
   return _sql;
 }
