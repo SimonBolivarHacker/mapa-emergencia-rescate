@@ -7,8 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -23,20 +29,28 @@
     "react-leaflet": "^5.0.0",
     "react-zoom-pan-pinch": "^4.0.3",
     "supercluster": "^8.0.1",
-    "turbo-stream": "^2.4.1"
+    "turbo-stream": "2.4.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
-    "@types/node": "^20",
+    "@types/node": "24.13.2",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "husky": "9.1.7",
+    "lint-staged": "17.0.8",
     "pg": "^8.22.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs,js}": "eslint --fix"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
