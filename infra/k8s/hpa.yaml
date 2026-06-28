@@ -1,5 +1,5 @@
 # HorizontalPodAutoscaler — escala los PODS (no los nodos; de eso se encarga el
-# cluster-autoscaler, ver infra/tofu/autoscaler.tf). HPA + CA trabajan juntos:
+# cluster-autoscaler, ver infra/k8s/cluster-autoscaler.yaml). HPA + CA trabajan juntos:
 # HPA pide más réplicas → si no caben, sus pods quedan Pending → el CA arranca un
 # VPS efímero → los pods se programan. Al bajar la carga, HPA quita réplicas y el
 # CA destruye el VPS vacío.

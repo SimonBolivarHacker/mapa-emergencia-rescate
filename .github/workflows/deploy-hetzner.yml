@@ -363,6 +363,17 @@ jobs:
           PROD_HOST: ${{ secrets.PROD_HOST }}
         run: |
           set -euo pipefail
+          # --- Limpieza del tier LEGACY (monolito pre-split) -----------------
+          # Antes del split había UN Deployment `app` + UN Service `app`, ambos
+          # con el LB name "mapa-lb". El nuevo Service `web` reclama EL MISMO
+          # "mapa-lb": dos Services sobre un LB de Hetzner NO está soportado (el
+          # CCM los reconcilia uno contra otro y se pisan; ver hcloud-ccm #232/#249).
+          # `kubectl apply` es aditivo y nunca borró el `app` viejo, así que quedó
+          # peleando por el LB. Lo borramos AQUÍ, ANTES de aplicar el Service web,
+          # para que `web` quede como ÚNICO dueño de "mapa-lb" (conserva la IP .170,
+          # el DNS no cambia). Idempotente: --ignore-not-found.
+          kubectl -n mapa delete deployment app --ignore-not-found
+          kubectl -n mapa delete service app --ignore-not-found
           # service.yaml define DOS Services (web + api) con puertos estáticos;
           # envsubst solo rellena el perfil TLS. La API usa EL MISMO perfil que
           # web (mismo patrón que el LB actual `app`): TLS lo termina Cloudflare
@@ -443,7 +454,7 @@ jobs:
       - name: Rollback hint on failure
         if: ${{ failure() }}
         run: |
-          echo "::warning::Deploy failed. To revert: kubectl -n mapa rollout undo deployment/app"
+          echo "::warning::Deploy failed. To revert: kubectl -n mapa rollout undo deployment/web && kubectl -n mapa rollout undo deployment/api"
 
       - name: Done
         run: echo "✅ deploy ($TARGET) finished."

@@ -11,8 +11,12 @@
 # siempre encendido), así que funciona incluso con 0 workers — puede crear el
 # primero. nodeSelector + toleration lo fijan al master.
 #
-# Versionado: la imagen del CA sigue el minor de k8s. Cluster en v1.36 →
-# cluster-autoscaler:v1.36.x. Bumpear junto con k3s.
+# Versionado: el CA va POR DETRÁS del minor de k8s (sus releases salen después).
+# Cluster en v1.36, pero v1.36.x AÚN NO está publicada en registry.k8s.io (el
+# último tag es v1.35.0) → usamos v1.35.0. Correr el CA un minor por debajo del
+# clúster es el skew soportado oficialmente. Regla: usa el v1.<N>.x más alto
+# PUBLICADO con N <= minor del clúster; bumpear cuando salga v1.36.x.
+# (Pinear v1.36.0 daba ImagePullBackOff: "not found" — ese tag nunca existió.)
 #
 # Config de Hetzner (HCLOUD_TOKEN, HCLOUD_CLUSTER_CONFIG, red/firewall/ssh) se
 # inyecta vía el Secret `cluster-autoscaler-hcloud`, que CREA el workflow de
@@ -123,8 +127,9 @@ spec:
           effect: NoSchedule
       containers:
         - name: cluster-autoscaler
-          # Pin al minor de k8s del clúster (v1.36). Bumpear con k3s.
-          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.36.0
+          # Último tag PUBLICADO (CA va por detrás de k8s; v1.36.x aún no existe).
+          # Skew soportado: CA un minor por debajo del clúster v1.36.
+          image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
           command:
             - ./cluster-autoscaler
             - --cloud-provider=hetzner

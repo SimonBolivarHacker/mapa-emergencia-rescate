@@ -17,7 +17,7 @@
 #   - readinessProbe /api/readyz -> el LB solo enruta a pods que pasan el check
 #     de DB. Durante un rollout, el LB drena el viejo (readiness deja de pasar en
 #     preStop) y solo manda tráfico al nuevo.
-#   - cluster-autoscaler (infra/tofu/autoscaler.tf) arranca VPS efímeros cuando
+#   - cluster-autoscaler (infra/k8s/cluster-autoscaler.yaml) arranca VPS efímeros cuando
 #     los pods nuevos no caben, y destruye los viejos al drenar (graceful).
 #
 # CI parchea el tag del image por-deploy con `kubectl set image` en AMBOS.
