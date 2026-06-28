@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb, hasDbEnv, schema } from "./drizzle";
+import { getPublicSupplySummariesForHospitals } from "./hospital-supplies";
 import hospitalsSeed from "./data/hospitals-seed.json";
 import {
   HOSPITAL_FACILITY_TYPES,
@@ -88,6 +89,17 @@ function rowToHospital(row: HospitalRow): Hospital {
   };
 }
 
+async function withSupplySummaries(hospitalsList: Hospital[]): Promise<Hospital[]> {
+  if (hospitalsList.length === 0) return hospitalsList;
+  const summaries = await getPublicSupplySummariesForHospitals(
+    hospitalsList.map((h) => h.id),
+  );
+  return hospitalsList.map((hospital) => ({
+    ...hospital,
+    supplySummary: summaries.get(hospital.id),
+  }));
+}
+
 function normalizeFacilityType(v: string | null | undefined): HospitalFacilityType {
   const t = (v ?? "").toLowerCase();
   return HOSPITAL_FACILITY_TYPES.has(t as HospitalFacilityType)
@@ -149,6 +161,7 @@ export interface ListHospitalsOptions {
   priorityZone?: HospitalPriorityZone | "all";
   search?: string;
   limit?: number;
+  includeSupplySummary?: boolean;
 }
 
 export async function listHospitals(
@@ -196,7 +209,10 @@ export async function listHospitals(
       LIMIT ${limit}
     `);
     const rows = (Array.isArray(result) ? result : result.rows) as HospitalRow[];
-    return rows.map(rowToHospital);
+    const hospitalsList = rows.map(rowToHospital);
+    return options.includeSupplySummary
+      ? withSupplySummaries(hospitalsList)
+      : hospitalsList;
   }
 
   ensureMemorySeed();
@@ -235,7 +251,10 @@ export async function listHospitals(
     if (a.state !== b.state) return a.state.localeCompare(b.state);
     return a.name.localeCompare(b.name);
   });
-  return list.slice(0, limit);
+  const hospitalsList = list.slice(0, limit);
+  return options.includeSupplySummary
+    ? withSupplySummaries(hospitalsList)
+    : hospitalsList;
 }
 
 export async function listStates(): Promise<string[]> {
@@ -256,7 +275,10 @@ export async function listStates(): Promise<string[]> {
   return [...set].sort();
 }
 
-export async function getHospital(id: string): Promise<Hospital | null> {
+export async function getHospital(
+  id: string,
+  options: { includeSupplySummary?: boolean } = {},
+): Promise<Hospital | null> {
   if (hasDbEnv()) {
     await seedHospitalsIfNeeded();
     const result = await getDb().execute(sql`
@@ -273,7 +295,12 @@ export async function getHospital(id: string): Promise<Hospital | null> {
       GROUP BY h.id
     `);
     const rows = (Array.isArray(result) ? result : result.rows) as HospitalRow[];
-    if (rows[0]) return rowToHospital(rows[0]);
+    if (rows[0]) {
+      const hospital = rowToHospital(rows[0]);
+      return options.includeSupplySummary
+        ? (await withSupplySummaries([hospital]))[0]
+        : hospital;
+    }
 
     const hospitalsList = await listHospitals({ limit: 1000 });
     return hospitalsList.find((h) => matchesHospitalSlug(h, id)) ?? null;
@@ -285,14 +312,17 @@ export async function getHospital(id: string): Promise<Hospital | null> {
       matchesHospitalSlug(hospital, id),
     );
     if (!match) return null;
-    return getHospital(match.id);
+    return getHospital(match.id, options);
   }
   const patients = [...memoryPatients.values()].filter((p) => p.hospitalId === id);
-  return {
+  const hospital = {
     ...h,
     activePatients: patients.filter((p) => p.status === "hospitalized").length,
     totalPatients: patients.length,
   };
+  return options.includeSupplySummary
+    ? (await withSupplySummaries([hospital]))[0]
+    : hospital;
 }
 
 export async function addHospital(input: NewHospital): Promise<Hospital> {
