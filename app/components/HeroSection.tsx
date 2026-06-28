@@ -5,6 +5,8 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { toggleTheme } from "./ThemeProvider";
 
+const OPEN_EMERGENCY_REPORT_EVENT = "open-emergency-report";
+
 function scrollToSection(id: string) {
   const target = document.getElementById(id);
   if (target) {
@@ -51,10 +53,13 @@ function HeroAccessCard({
 }
 
 export default function HeroSection() {
-  const goMap = useCallback(() => scrollToSection("mapa"), []);
   const goMissing = useCallback(() => scrollToSection("e-directory"), []);
   const goHelp = useCallback(() => scrollToSection("tutorial"), []);
   const goVolunteer = useCallback(() => scrollToSection("equipo"), []);
+  const openEmergencyReport = useCallback(() => {
+    scrollToSection("mapa");
+    window.dispatchEvent(new CustomEvent(OPEN_EMERGENCY_REPORT_EVENT));
+  }, []);
 
   return (
     <header className="relative overflow-hidden">
@@ -112,9 +117,9 @@ export default function HeroSection() {
             />
             <HeroAccessCard
               emoji="📢"
-              title="Reportar Personas"
-              description="Encontré a alguien y quiero reportarlo."
-              onClick={goMap}
+              title="Reportar Información"
+              description="Reporta emergencias, refugios, suministros, personas desaparecidas y más."
+              onClick={openEmergencyReport}
             />
             <HeroAccessCard
               emoji="🆘"

@@ -11,7 +11,7 @@ export interface SectionLink {
 
 export const PRIMARY_MAP_LINK: SectionLink = {
   href: "#mapa",
-  label: "Ir al mapa y reportar",
+  label: "Reportar emergencia",
   shortLabel: "Mapa",
   icon: "🗺️",
   tone: "primary",

@@ -59,7 +59,7 @@ export const REPORT_TYPES: Record<
       "Zonas seguras pero con necesidad urgente de suministros (falta de agua, comida, cobijo o primeros auxilios).",
   },
   shelter: {
-    label: "Centro de Acopio",
+    label: "Centro de Acopio / Refugio",
     color: "#16a34a",
     emoji: "🟢",
     icon: "🏠",

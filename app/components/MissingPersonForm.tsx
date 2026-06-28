@@ -391,40 +391,40 @@ export default function MissingPersonForm({
                 type="button"
                 onClick={() => setReportType("missing")}
                 aria-pressed={isMissing}
-                className={`e-report-modal__type-btn flex flex-col items-start gap-1 rounded-xl border-[1.5px] p-3.5 text-left transition ${
+                className={`e-report-modal__type-btn transition ${
                   isMissing
-                    ? "is-active border-[#c41a1a] bg-[#c41a1a] text-white"
+                    ? "is-active border-red-600 bg-red-600 text-white"
                     : "border-[var(--eborder)] bg-white text-[var(--etext)] hover:border-[var(--etext3)]"
                 }`}
               >
-                <SearchIcon className="e-report-modal__type-icon h-5 w-5" />
-                <span className="text-sm font-extrabold">
-                  Persona desaparecida
-                </span>
-                <span
-                  className={`text-xs ${isMissing ? "text-white/85" : "text-[var(--etext2)]"}`}
-                >
-                  No sé dónde está
+                <SearchIcon className="e-report-modal__type-icon" />
+                <span className="e-report-modal__type-copy">
+                  <span className="e-report-modal__type-title">
+                    Persona desaparecida
+                  </span>
+                  <span className="e-report-modal__type-hint">
+                    No sé dónde está
+                  </span>
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => setReportType("found")}
                 aria-pressed={!isMissing}
-                className={`e-report-modal__type-btn flex flex-col items-start gap-1 rounded-xl border-[1.5px] p-3.5 text-left transition ${
+                className={`e-report-modal__type-btn transition ${
                   !isMissing
-                    ? "is-active is-found border-[#2b51f0] bg-[#2b51f0] text-white"
+                    ? "is-active is-found border-indigo-600 bg-indigo-600 text-white"
                     : "border-[var(--eborder)] bg-white text-[var(--etext)] hover:border-[var(--etext3)]"
                 }`}
               >
-                <PinIcon className="e-report-modal__type-icon h-5 w-5" />
-                <span className="text-sm font-extrabold">
-                  Persona encontrada
-                </span>
-                <span
-                  className={`text-xs ${!isMissing ? "text-white/85" : "text-[var(--etext2)]"}`}
-                >
-                  Sé dónde está o la vi
+                <PinIcon className="e-report-modal__type-icon" />
+                <span className="e-report-modal__type-copy">
+                  <span className="e-report-modal__type-title">
+                    Persona encontrada
+                  </span>
+                  <span className="e-report-modal__type-hint">
+                    Sé dónde está o la vi
+                  </span>
                 </span>
               </button>
             </div>

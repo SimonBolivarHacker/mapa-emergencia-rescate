@@ -237,7 +237,7 @@ export default function ReportForm({
       >
         <div className="mb-3 flex items-start justify-between">
           <h2 id="form-title" className="text-lg font-bold text-slate-900">
-            🚨 Reportar Emergencia / Solicitar Ayuda
+            🚨 Reportar Información
           </h2>
           <button
             type="button"
@@ -489,7 +489,7 @@ export default function ReportForm({
               disabled={submitting || processingPhoto}
               className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
             >
-              {submitting ? "Publicando…" : "Publicar Alerta"}
+              {submitting ? "Publicando…" : "Reportar información"}
             </button>
           </div>
         </form>
