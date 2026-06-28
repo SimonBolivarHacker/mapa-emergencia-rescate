@@ -71,11 +71,15 @@ jobs:
           files: ${{ steps.changed.outputs.sql_files }}
           version: latest
           access_token: ${{ secrets.GITHUB_TOKEN }}
-          # Excluimos reglas que chocan con nuestra baseline idempotente a
-          # propósito (ADD COLUMN ... DEFAULT en tablas controladas + el gate real
-          # de locks es deploy-time, lock_timeout en worker/migrate.ts). Quita de
-          # esta lista si quieres que una regla vuelva a bloquear.
-          exclude: prefer-robust-stmts,adding-not-nullable-field
+          # Reglas excluidas a propósito:
+          #  - prefer-robust-stmts / adding-not-nullable-field: nuestra baseline es
+          #    idempotente (ADD COLUMN ... DEFAULT en tablas controladas).
+          #  - require-concurrent-index-creation / require-timeout-settings: los
+          #    índices se crean junto a tablas NUEVAS (vacías), así que no bloquean
+          #    nada; y CREATE INDEX CONCURRENTLY no puede correr dentro de la
+          #    transacción del migrador de Drizzle. El lock/statement_timeout real
+          #    ya se aplica a nivel de conexión en worker/migrate.ts.
+          exclude: prefer-robust-stmts,adding-not-nullable-field,require-concurrent-index-creation,require-timeout-settings
 
       - name: No migration changes
         if: steps.changed.outputs.sql != 'true'

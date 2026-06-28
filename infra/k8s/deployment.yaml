@@ -47,6 +47,11 @@ spec:
           envFrom:
             - secretRef:
                 name: app-env
+          env:
+            # Mantén el heap V8 por debajo del límite del cgroup para que Node
+            # haga GC antes de que el kernel mande SIGKILL (OOMKilled/exit 137).
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=640"
           # Liveness: is the process alive? (cheap, no DB) — restart if not.
           livenessProbe:
             httpGet:
@@ -70,9 +75,9 @@ spec:
           resources:
             requests:
               cpu: "100m"
-              memory: "256Mi"
+              memory: "384Mi"
             limits:
-              memory: "512Mi"
+              memory: "768Mi"
           # Give in-flight requests a moment before SIGTERM during drain.
           lifecycle:
             preStop:

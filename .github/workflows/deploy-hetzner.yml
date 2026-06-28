@@ -199,17 +199,19 @@ jobs:
           chmod 600 "$HOME/.kube/config"
           kubectl get nodes
 
-      # GHCR es privado -> el clúster necesita un secret de pull. Lo creamos/
-      # refrescamos en cada deploy con el GITHUB_TOKEN del run (tiene read:packages
-      # sobre este repo). Los manifests referencian `imagePullSecrets: ghcr-pull`.
+      # GHCR es privado -> el clúster necesita un secret de pull. Usamos un PAT
+      # clásico (read:packages, SIN expiración) en `secrets.GHCR_PULL_TOKEN`, NO
+      # el GITHUB_TOKEN del run: ese expira en 1h, así que los pods nuevos que se
+      # creen después (rollout, scale-up, Jobs) fallaban con 403 al hacer pull.
+      # Los manifests referencian `imagePullSecrets: ghcr-pull`.
       - name: Ensure ghcr-pull secret
         run: |
           set -euo pipefail
           kubectl create namespace mapa --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n mapa create secret docker-registry ghcr-pull \
             --docker-server=ghcr.io \
-            --docker-username='${{ github.actor }}' \
-            --docker-password='${{ secrets.GITHUB_TOKEN }}' \
+            --docker-username='${{ secrets.GHCR_PULL_USER }}' \
+            --docker-password='${{ secrets.GHCR_PULL_TOKEN }}' \
             --docker-email='ci@users.noreply.github.com' \
             --dry-run=client -o yaml | kubectl apply -f -
 
