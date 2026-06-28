@@ -60,7 +60,7 @@ jobs:
       (github.event.pull_request.merged == true &&
        github.event.pull_request.base.ref == 'main')
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -107,7 +107,7 @@ jobs:
        github.event.pull_request.base.ref == 'main')
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # En pull_request:closed el checkout por defecto es la merge-ref del PR.
           # El PR YA está mergeado, así que construimos sobre `main` real.
