@@ -177,6 +177,12 @@ export default function SiteFooter() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 sm:shrink-0 sm:justify-end">
             <Link
+              href="/metodologia"
+              className="whitespace-nowrap text-[var(--etext3)] hover:text-[var(--etext2)] hover:underline"
+            >
+              Metodología
+            </Link>
+            <Link
               href="/riesgo-sismico"
               className="whitespace-nowrap text-[var(--etext3)] hover:text-[var(--etext2)] hover:underline"
             >
