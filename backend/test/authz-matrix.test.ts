@@ -1,6 +1,5 @@
 /**
  * Matriz de autorización — la red de seguridad de la superficie api/public/*.
- * Espeja test_authz_matrix.py de Argo:
  *
  *   Cada caso = (endpoint, método, capacidad-requerida) × varios SUJETOS
  *   (anónimo, usuario sin caps, usuario con la cap exacta, admin) × veredicto
@@ -57,6 +56,31 @@ const CASES: Case[] = [
   { label: "chat list", method: "get", path: "/api/public/chat", cap: "chat:read" },
   { label: "contact list", method: "get", path: "/api/public/contact", cap: "contact:read" },
   { label: "invite (user:invite)", method: "post", path: "/api/public/auth/invite", cap: "user:invite", body: { email: "x@y.z" } },
+  // --- RBAC admin (roles vía fábrica; users/grants/audit a mano) ---
+  { label: "roles list", method: "get", path: "/api/public/roles", cap: "role:read" },
+  {
+    label: "roles create",
+    method: "post",
+    path: "/api/public/roles",
+    cap: "role:create",
+    body: { name: "Test Role", capabilities: ["report:read"] },
+  },
+  { label: "roles edit", method: "patch", path: "/api/public/roles/none", cap: "role:edit", body: { name: "x" } },
+  { label: "roles delete", method: "delete", path: "/api/public/roles/none", cap: "role:delete" },
+  { label: "users list", method: "get", path: "/api/public/users", cap: "user:read" },
+  { label: "users edit", method: "patch", path: "/api/public/users/none", cap: "user:edit", body: { status: "active" } },
+  { label: "users delete", method: "delete", path: "/api/public/users/none", cap: "user:delete" },
+  { label: "grants list", method: "get", path: "/api/public/grants", cap: "grant:read" },
+  {
+    label: "grants create",
+    method: "post",
+    path: "/api/public/grants",
+    cap: "grant:manage",
+    body: { userId: "none", capabilityKey: "report:read" },
+  },
+  { label: "grants revoke", method: "delete", path: "/api/public/grants/none", cap: "grant:manage" },
+  { label: "audit list", method: "get", path: "/api/public/audit", cap: "audit:read" },
+  { label: "capabilities catalog", method: "get", path: "/api/public/capabilities", cap: "role:read" },
 ];
 
 function send(method: Case["method"], path: string, token?: string, body?: object) {

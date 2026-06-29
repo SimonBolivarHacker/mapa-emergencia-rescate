@@ -1,0 +1,8 @@
+node_modules
+.next
+.turbo
+coverage
+package-lock.json
+*.log
+infra/k8s
+**/next-env.d.ts

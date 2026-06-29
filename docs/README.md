@@ -85,6 +85,8 @@ acción.
   · _propuesta_.
 - [0004 — Nodos efímeros (cluster-autoscaler) + split web/api](rfcs/0004-autoscaling-y-split-web-api.md)
   · _propuesta_.
+- [0005 — Panel admin standalone (3er tier)](rfcs/0005-panel-admin-standalone.md)
+  · _implementado_.
 
 ### ADRs
 

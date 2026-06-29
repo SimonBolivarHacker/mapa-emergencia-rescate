@@ -95,10 +95,38 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+  # Gate del PANEL ADMIN (Turborepo aparte, requiere Node 24). Job separado para
+  # no mezclar versiones de Node con el verify de frontend/backend.
+  verify-admin:
+    name: verify-admin
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main')
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - name: Install deps (admin)
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Lint admin
+        run: npm run lint
+      - name: Typecheck admin
+        run: npm run typecheck
+      - name: Test admin
+        run: npm run test
+
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    needs: verify
+    needs: [verify, verify-admin]
     # Mismo gate que verify: PR mergeado a main, o dispatch manual. Un push crudo
     # a main (p.ej. bypass de admin) NO dispara este workflow.
     if: >-
@@ -203,6 +231,27 @@ jobs:
           tags: |
             ${{ env.IMAGE }}-backend:${{ env.SHA }}
             ${{ env.IMAGE }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- admin (PANEL admin, Next standalone). context = admin/. El BFF llama
+      # al backend en RUNTIME (EMERGENCY_API_URL inyectado por el Deployment), así
+      # que NO va como build-arg. Solo el SHA (anti version-skew) y el asset prefix
+      # se fijan en build. -------------------------------------------------------
+      - name: Build and push (admin)
+        uses: docker/build-push-action@v7
+        with:
+          context: ./admin
+          target: runtime
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ env.IMAGE }}-admin:${{ env.SHA }}
+            ${{ env.IMAGE }}-admin:latest
+          build-args: |
+            APP_BUILD_SHA=${{ env.SHA }}
+            NEXT_PUBLIC_ASSET_PREFIX=${{ secrets.NEXT_PUBLIC_ADMIN_ASSET_PREFIX }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -422,9 +471,10 @@ jobs:
           else
             export WEB_TLS_ANNOTATIONS=$(printf '    load-balancer.hetzner.cloud/protocol: "https"\n    load-balancer.hetzner.cloud/http-certificates: "cf-origin-dreamit"\n    load-balancer.hetzner.cloud/http-redirect-https: "true"')
           fi
-          # api SIEMPRE replica el perfil de web (sea managed o cf-origin).
+          # api y admin SIEMPRE replican el perfil de web (sea managed o cf-origin).
           export API_TLS_ANNOTATIONS="$WEB_TLS_ANNOTATIONS"
-          envsubst '${WEB_TLS_ANNOTATIONS} ${API_TLS_ANNOTATIONS}' \
+          export ADMIN_TLS_ANNOTATIONS="$WEB_TLS_ANNOTATIONS"
+          envsubst '${WEB_TLS_ANNOTATIONS} ${API_TLS_ANNOTATIONS} ${ADMIN_TLS_ANNOTATIONS}' \
             < infra/k8s/service.yaml > /tmp/service.rendered.yaml
           echo "--- rendered Services (target=$TARGET) ---"
           cat /tmp/service.rendered.yaml
@@ -501,7 +551,9 @@ jobs:
             app=${{ env.IMAGE }}-frontend:${{ env.SHA }}
           kubectl -n mapa set image deployment/api \
             app=${{ env.IMAGE }}-backend:${{ env.SHA }}
-          for tier in web api; do
+          kubectl -n mapa set image deployment/admin \
+            app=${{ env.IMAGE }}-admin:${{ env.SHA }}
+          for tier in web api admin; do
             kubectl -n mapa rollout status "deployment/${tier}" --timeout=300s
           done
           # migrate-worker reusa la imagen BACKEND (mismo artefacto, otro command).
@@ -515,7 +567,7 @@ jobs:
       - name: Rollback hint on failure
         if: ${{ failure() }}
         run: |
-          echo "::warning::Deploy failed. To revert: kubectl -n mapa rollout undo deployment/web && kubectl -n mapa rollout undo deployment/api"
+          echo "::warning::Deploy failed. To revert: kubectl -n mapa rollout undo deployment/web && kubectl -n mapa rollout undo deployment/api && kubectl -n mapa rollout undo deployment/admin"
 
       - name: Done
         run: echo "✅ deploy ($TARGET) finished."
