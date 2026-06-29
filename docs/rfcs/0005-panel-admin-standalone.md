@@ -7,9 +7,9 @@ Estado: implementado. Continúa el split web/api de
 
 El panel de administración dejó de ser una ruta dentro del sitio público
 (`frontend/app/(admin)`) y pasó a ser un **microservicio Next.js standalone** en
-`admin/` (Turborepo: `apps/web` + `packages/{ui,config}`). Lo usan rescatistas y
-coordinadores, no el público general, y diverge del sitio público en layout,
-navegación y flujos (gestión de roles/usuarios, entrada de datos).
+`admin/` (app Next.js plana: `app/` + `src/` + `tests/`, sin monorepo). Lo usan
+rescatistas y coordinadores, no el público general, y diverge del sitio público
+en layout, navegación y flujos (gestión de roles/usuarios, entrada de datos).
 
 Adaptado del PR #125 (que lo diseñó contra el monolito previo): se reusó el
 scaffold/DDD/Result/HttpClient y se reescribió AUTH (motor RBAC con JWT en cookie
@@ -20,7 +20,8 @@ existente, no un workflow aparte).
 
 Un **tercer tier** `admin`, espejo del patrón `web`/`api`:
 
-- **Imagen propia** `…-admin:<sha>` (Dockerfile Next standalone en `admin/`). NO
+- **Imagen propia** `…-admin:<sha>` (Dockerfile Next standalone en `admin/`; app
+  plana, `server.js` y `.next/static` quedan en la raíz). NO
   se reusa la imagen del frontend: son apps distintas que evolucionan por
   separado (aislamiento de blast-radius en build y deploy).
 - **Deployment `admin`** (`tier=admin`, :3000), réplicas bajas (2–6 vía HPA): no
@@ -49,7 +50,7 @@ Cookie httpOnly **host-only** sobre `admin.terremotovenezuela.app`
 
 Todo vive en `.github/workflows/deploy-hetzner.yml` (NO un workflow aparte):
 
-1. Job `verify-admin` (Node 24): `lint` + `typecheck` + `test` del Turborepo.
+1. Job `verify-admin` (Node 24): `lint` + `typecheck` + `test` del panel.
    `deploy` depende de `verify` **y** `verify-admin`.
 2. Build+push de la imagen `…-admin:<sha>` (build-arg `APP_BUILD_SHA` para el
    anti version-skew; `EMERGENCY_API_URL` NO es build-arg, se inyecta en runtime).

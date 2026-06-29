@@ -1,32 +1,29 @@
-# Dashboard — Admin microservicio
+# Panel admin
 
-Panel de administración del mapa de emergencias. Monorepo Turborepo con npm workspaces.
+Panel de administración del mapa de emergencias. App Next.js standalone
+(microservicio aparte del sitio público). El navegador llama same-origin al BFF
+del propio panel (`app/api/*`), que reenvía al backend por la red interna.
 
 ## Requisitos
 
 - Node >=24
-- npm >=10
 
 ## Arrancar
 
 ```bash
-# Instalar dependencias
 npm install
-
-# Modo desarrollo (todos los paquetes)
-npm run dev
-
-# Ejecutar tests
-npm run test
-
-# Lint
+npm run dev        # desarrollo
 npm run lint
+npm run typecheck
+npm run test
+npm run build
 ```
 
 ## Estructura
 
 ```
-dashboard/
-├── apps/       # Aplicaciones (ej. admin web)
-└── packages/   # Paquetes compartidos (ej. ui, utils)
+admin/
+├── app/      # Next App Router: páginas + BFF (app/api/*)
+├── src/      # contexts (DDD), shared (auth/http), ui (atoms), config
+└── tests/    # vitest
 ```

@@ -448,8 +448,8 @@ jobs:
       # Igual que el frontend, pero para el PANEL admin → prefijo SEPARADO
       # `admin/_next/static` (su assetPrefix es <R2_PUBLIC_BASE>/admin). Mismo
       # bucket, carpeta aparte: los chunks de los dos apps no se mezclan. Additive
-      # (sin --delete), content-hashed + immutable. Layout monorepo: el static
-      # vive en /app/apps/web/.next/static dentro de la imagen del admin.
+      # (sin --delete), content-hashed + immutable. App plana: el static vive en
+      # /app/.next/static dentro de la imagen del admin.
       - name: Upload admin static assets to R2 CDN
         env:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
@@ -466,7 +466,7 @@ jobs:
           docker pull "$IMAGE"
           CID=$(docker create "$IMAGE")
           rm -rf /tmp/admin-static && mkdir -p /tmp/admin-static
-          docker cp "$CID":/app/apps/web/.next/static/. /tmp/admin-static/
+          docker cp "$CID":/app/.next/static/. /tmp/admin-static/
           docker rm "$CID"
           aws s3 sync /tmp/admin-static "s3://$R2_STATIC_BUCKET/admin/_next/static" \
             --endpoint-url "$R2_ENDPOINT" \

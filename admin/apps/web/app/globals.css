@@ -1,9 +1,0 @@
-@import "tailwindcss";
-
-/*
- * Tailwind v4 auto-detecta el contenido de ESTA app, pero NO escanea paquetes
- * del monorepo. Los atoms de @repo/ui (Button, Input, MetricCard) declaran sus
- * clases (bg-blue-600, rounded-md, …) en packages/ui/src — sin esto, esas clases
- * no se generan y los botones/inputs salen sin estilo. @source las incluye.
- */
-@source "../../../packages/ui/src/**/*.{ts,tsx}";
