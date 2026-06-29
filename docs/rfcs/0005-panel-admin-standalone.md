@@ -70,8 +70,13 @@ Todo vive en `.github/workflows/deploy-hetzner.yml` (NO un workflow aparte):
    `admin.terremotovenezuela.app`, **añade ese hostname a `PROD_HOST`** (lista
    separada por comas: `terremotovenezuela.app,api.…,admin.…`). En `staging`
    (cf-origin) el cert comodín ya lo cubre.
-4. (Opcional) `NEXT_PUBLIC_ADMIN_ASSET_PREFIX` si sirves `/_next/static` del
-   panel desde un CDN.
+4. **Estáticos en R2 (CDN)**: el workflow sube el `.next/static` del panel a
+   `s3://$R2_STATIC_BUCKET/admin/_next/static` (carpeta SEPARADA de la del
+   frontend en el mismo bucket — los chunks no se mezclan). El `assetPrefix` del
+   panel se deriva en build de `vars.NEXT_PUBLIC_R2_PUBLIC_BASE` + `/admin`, así
+   que sin tocar nada extra el panel pide sus estáticos al CDN. Si la base CDN no
+   está configurada, el prefijo queda vacío y los sirve el propio pod (los 2 pods
+   comparten build-id por `generateBuildId`, así que igual no hay ChunkLoadError).
 
 ## Alternativas descartadas
 

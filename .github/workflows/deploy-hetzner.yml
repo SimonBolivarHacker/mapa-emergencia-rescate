@@ -251,7 +251,10 @@ jobs:
             ${{ env.IMAGE }}-admin:latest
           build-args: |
             APP_BUILD_SHA=${{ env.SHA }}
-            NEXT_PUBLIC_ASSET_PREFIX=${{ secrets.NEXT_PUBLIC_ADMIN_ASSET_PREFIX }}
+            # assetPrefix del panel = base CDN + sufijo /admin (sus estáticos van a
+            # s3://BUCKET/admin/_next/static, separados de los del frontend). Sin
+            # base CDN configurada -> vacío -> el pod sirve sus propios estáticos.
+            NEXT_PUBLIC_ASSET_PREFIX=${{ vars.NEXT_PUBLIC_R2_PUBLIC_BASE && format('{0}/admin', vars.NEXT_PUBLIC_R2_PUBLIC_BASE) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -441,6 +444,36 @@ jobs:
             --checksum-algorithm CRC32 \
             --no-progress
           echo "Synced $(find /tmp/next-static -type f | wc -l) files to r2://$R2_STATIC_BUCKET/_next/static"
+
+      # Igual que el frontend, pero para el PANEL admin → prefijo SEPARADO
+      # `admin/_next/static` (su assetPrefix es <R2_PUBLIC_BASE>/admin). Mismo
+      # bucket, carpeta aparte: los chunks de los dos apps no se mezclan. Additive
+      # (sin --delete), content-hashed + immutable. Layout monorepo: el static
+      # vive en /app/apps/web/.next/static dentro de la imagen del admin.
+      - name: Upload admin static assets to R2 CDN
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_STATIC_BUCKET: ${{ secrets.R2_STATIC_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ENDPOINT:-}" ] || [ -z "${R2_STATIC_BUCKET:-}" ]; then
+            echo "R2 secrets unset — skipping admin static upload."
+            exit 0
+          fi
+          IMAGE="${{ env.IMAGE }}-admin:${{ env.SHA }}"
+          docker pull "$IMAGE"
+          CID=$(docker create "$IMAGE")
+          rm -rf /tmp/admin-static && mkdir -p /tmp/admin-static
+          docker cp "$CID":/app/apps/web/.next/static/. /tmp/admin-static/
+          docker rm "$CID"
+          aws s3 sync /tmp/admin-static "s3://$R2_STATIC_BUCKET/admin/_next/static" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --checksum-algorithm CRC32 \
+            --no-progress
+          echo "Synced $(find /tmp/admin-static -type f | wc -l) files to r2://$R2_STATIC_BUCKET/admin/_next/static"
 
       # ---------------------------------------------------------------
       # 3. Apply manifests (Service rendered per target), gated migrate, roll.
