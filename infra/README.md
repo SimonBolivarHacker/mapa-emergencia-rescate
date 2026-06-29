@@ -33,7 +33,7 @@ ADMIN DOMAIN  ──► Hetzner LB "admin-lb"      (admin tier, admin image)
               │  from the type=LoadBalancer Services (k8s/service.yaml)
               ▼
         k3s pods  (web 3×, api 3×, admin 2×, worker — "cattle", immutable)
-              │  health: web/api GET /api/readyz (DB ping); admin GET /api/health (BFF)
+              │  health: web GET / (UI); api GET /api/readyz (DB ping); admin GET /api/health (BFF)
               ▼  (private network, 10.0.0.0/16)
      Postgres VPS (pet)        Valkey VPS (pet)
      DBs: app + imported       sessions + pub/sub + BullMQ
