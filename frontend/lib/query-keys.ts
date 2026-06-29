@@ -22,6 +22,10 @@ export const qk = {
     all: ["reports"] as const,
     list: ["reports", "list"] as const,
   },
+  earthquakes: {
+    all: ["earthquakes"] as const,
+    list: ["earthquakes", "list"] as const,
+  },
   hospitals: {
     all: ["hospitals"] as const,
     list: (p?: Record<string, unknown>) => ["hospitals", "list", p ?? {}] as const,

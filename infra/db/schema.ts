@@ -797,3 +797,31 @@ export const auditLog = pgTable(
     index("idx_audit_target").on(t.targetType, t.targetId),
   ],
 );
+
+/* ------------------------------------------------------------- earthquakes */
+// Catálogo de sismos en Venezuela, ingerido del USGS por el worker (feed
+// realtime cada minuto + backfill puntual vía FDSN). La PK es el `id` de evento
+// del USGS (ej. "us7000abcd") → el upsert es onConflictDoUpdate sobre la PK,
+// idempotente y a prueba de revisiones (USGS corrige magnitud horas después).
+// Datos públicos read-only; Venezuela genera <1 sismo/día (catálogo pequeño).
+export const earthquakes = pgTable(
+  "earthquakes",
+  {
+    id: text("id").primaryKey(), // id de evento USGS (clave natural)
+    magnitude: doublePrecision("magnitude"), // nullable: a veces se publica antes de calcularla
+    place: text("place").notNull(), // "43 km N of Carúpano, Venezuela"
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    depthKm: doublePrecision("depth_km"),
+    alert: text("alert"), // PAGER: green|yellow|orange|red (usualmente null en sismos chicos)
+    tsunami: boolean("tsunami").notNull().default(false),
+    sig: integer("sig"), // significancia USGS 0–1000
+    usgsUpdatedAt: epochMs("usgs_updated_at").notNull(), // 'updated' del USGS → decide si sobreescribir
+    occurredAt: epochMs("occurred_at").notNull(), // 'time' del USGS (momento del sismo)
+    fetchedAt: epochMs("fetched_at").notNull(), // cuándo lo vio nuestro worker
+  },
+  (t) => [
+    index("idx_earthquakes_occurred").on(t.occurredAt.desc()),
+    index("idx_earthquakes_geo").on(t.lat, t.lng),
+  ],
+);

@@ -1,8 +1,10 @@
 # Deploy to Hetzner (k3s) — DEPLOY ONLY.
 #
 # Trigger:
-#   - PR MERGEADO a `main`  -> auto-deploy a STAGING (CD). Un push crudo / bypass
-#                              de admin a main NO dispara deploy.
+#   - PUSH a `main`         -> auto-deploy a STAGING (CD). Un merge de PR (incl.
+#                              desde fork) aterriza como push a main y corre con
+#                              secrets (contexto del repo base). El "no desplegar
+#                              en push crudo/bypass" lo impone el ruleset de main.
 #   - workflow_dispatch     -> deploy manual; eliges target (staging | prod).
 #                              (prod SIEMPRE es un botón deliberado, nunca auto.)
 #
@@ -14,8 +16,10 @@
 # enqueue) NO viven aquí a propósito — córrelas a mano (tofu/kubectl).
 #
 # RESTRICCIÓN: el gate real es el `if` a nivel de job
-# (github.event.pull_request.merged == true && base.ref == 'main', o dispatch).
-# El ruleset "proteger main" exige PR + review de code-owner + check Build & Test.
+# (event push && ref == refs/heads/main, o dispatch). El ruleset "proteger main"
+# exige PR + review de code-owner + check Build & Test, así que a main solo llega
+# código revisado — por eso "push a main" equivale a "PR mergeado" sin el agujero
+# de secrets de los PR de fork.
 #
 # Pre-requisitos (una vez, con provision fuera de este workflow): cluster k3s,
 # secret KUBECONFIG (base64), y los secrets app-env + migrate-env creados.
@@ -25,10 +29,14 @@
 name: Deploy to Hetzner (k3s)
 
 on:
-  # Solo despliega cuando un PR se MERGEA a main (no en push crudo / bypass de
-  # admin). El gate real es el `if` a nivel de job: merged==true && base==main.
-  pull_request:
-    types: [closed]
+  # Despliega cuando algo aterriza en `main`. Un merge de PR (incluido desde un
+  # FORK) crea un push a main, y ESE run corre en el contexto del repo base con
+  # acceso a secrets — a diferencia de `pull_request:closed`, que en PR de fork
+  # corre sin secrets (diseño de GitHub) y rompía el login a GHCR. El push filtra
+  # solo `main`, así que los commits a ramas de PR NO disparan deploy (un solo
+  # run por merge, sin doble-disparo). El "no desplegar en push crudo" lo impone
+  # el ruleset de protección de `main` (PR + review obligatorios), no el trigger.
+  push:
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -45,6 +53,18 @@ permissions:
   packages: write       # push images to GHCR
   deployments: write
 
+# Concurrencia: a lo sumo UN deploy a la vez. cancel-in-progress:false NUNCA
+# aborta un deploy en vuelo (toca migraciones + roll de pods; cancelarlo a medias
+# dejaría estado inconsistente). Si llegan más merges mientras corre, GitHub
+# mantiene UN run pendiente y descarta los intermedios: el último pendiente se
+# construye sobre el `main` más nuevo y reemplaza a los viejos → se despliega el
+# estado final una sola vez (deploy = converger al último main, no reproducir
+# cada commit). Grupo fijo (no por-ref) porque todos los deploys van al MISMO
+# entorno y compiten por el mismo cluster.
+concurrency:
+  group: deploy-hetzner
+  cancel-in-progress: false
+
 # IMAGE is computed at runtime (lowercased) — GHCR/Docker require all-lowercase
 # repository names and ${{ github.repository }} can contain uppercase.
 
@@ -54,11 +74,12 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
-    # Corre solo si: (a) un PR se MERGEÓ a main, o (b) dispatch manual.
+    # Corre solo si: (a) push a main (un merge de PR aterriza aquí), o (b)
+    # dispatch manual. El filtro `push: branches: [main]` ya acota a main; el
+    # check de ref es defensivo.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -102,8 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     defaults:
       run:
         working-directory: admin
@@ -127,25 +147,25 @@ jobs:
     name: deploy
     runs-on: ubuntu-latest
     needs: [verify, verify-admin]
-    # Mismo gate que verify: PR mergeado a main, o dispatch manual. Un push crudo
-    # a main (p.ej. bypass de admin) NO dispara este workflow.
+    # Mismo gate que verify: push a main (un merge de PR aterriza aquí), o
+    # dispatch manual. El "no desplegar en push crudo / bypass de admin" lo impone
+    # el ruleset de protección de main (PR + review obligatorios), no el trigger.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.pull_request.merged == true &&
-       github.event.pull_request.base.ref == 'main')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # En pull_request:closed el checkout por defecto es la merge-ref del PR.
-          # El PR YA está mergeado, así que construimos sobre `main` real.
+          # En push a main, github.sha YA es el commit de main; fijamos ref: main
+          # explícito para ser inequívocos y reproducibles.
           ref: main
 
       - name: Compute image name (lowercase) + SHA
         run: |
           echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
-          # github.sha en pull_request apunta a la merge-ref de prueba; usamos el
-          # HEAD real de main (lo que acabamos de hacer checkout) para taggear.
+          # HEAD real de main (lo que acabamos de hacer checkout) para taggear la
+          # imagen — coincide con github.sha en push.
           echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       # Resuelve el target: merge a main -> staging; dispatch -> lo elegido

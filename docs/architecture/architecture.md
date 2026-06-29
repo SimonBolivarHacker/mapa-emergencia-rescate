@@ -118,6 +118,17 @@ también cubren `src/modules/**`.
   configuración del Deployment (`SYNC_SCHEDULERS=0`, `HUB_SCHEDULERS=0`).
 - El worker sigue disponible para jobs manuales como backfill de Neon,
   migración de fotos a R2 y trabajos encolados explícitamente.
+- **Sismos USGS** (`earthquakes.queue.ts`): el worker poll-ea el feed realtime
+  del USGS (`2.5_week.geojson`, global) cada `EARTHQUAKES_EVERY_MS` (default 60s,
+  la cadencia con la que USGS lo refresca), filtra al bounding box de Venezuela y
+  hace upsert por id de evento en la tabla `earthquakes`. Al arrancar, si la tabla
+  está vacía, encola un backfill puntual vía FDSN query (últimos
+  `EARTHQUAKES_BACKFILL_DAYS` días, una sola llamada — Venezuela genera <1
+  sismo/día). A diferencia de sync/hub, este scheduler **siempre corre** (no va
+  bajo `SYNC_SCHEDULERS`): es dato público y barato. El backfill de arranque es
+  idempotente (solo si la tabla está vacía), así que **el primer deploy siembra
+  solo** — sin Job ni paso manual. La superficie pública es `GET
+  /api/earthquakes` (read-only, anónima, cacheada con ETag).
 
 ## Despliegue
 

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  REPORT_TYPES,
   REPORT_TYPE_KEYS,
   type EmergencyReport,
   type ReportType,
