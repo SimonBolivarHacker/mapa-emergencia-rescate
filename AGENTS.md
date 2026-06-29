@@ -62,7 +62,7 @@ como canal de emergencia ni como base de datos de personas afectadas.
 ## Estado actual del stack
 
 El repo ya no es una app Next monolítica en la raíz. Es un monorepo simple con
-dos paquetes npm y una carpeta de infraestructura compartida:
+tres paquetes npm y una carpeta de infraestructura compartida:
 
 - `frontend/`: Next.js 16 + React 19. Es UI/SSR; no debe acceder directo a la
   base de datos ni reintroducir rutas `app/api/**`.
@@ -71,6 +71,10 @@ dos paquetes npm y una carpeta de infraestructura compartida:
   para API, worker y migraciones.
 - `backend/worker/`: workers BullMQ para sync, geocode, deduplicación,
   federación hub y migraciones/backfills.
+- `admin/`: panel de administración como microservicio Next.js standalone (3er
+  tier, RBAC con JWT en cookie httpOnly). Su BFF (`app/api/*`) reenvía al backend
+  por la red interna; no es tráfico público. Ver
+  `docs/rfcs/0005-panel-admin-standalone.md`.
 - `infra/db/`: esquema Drizzle y migraciones versionadas.
 - `infra/k8s/` + `infra/tofu/`: manifiestos Kubernetes y OpenTofu para Hetzner.
 - Despliegue canónico: Hetzner Cloud + k3s + Postgres/Valkey privados,
@@ -121,8 +125,7 @@ npm run migrate
 
 > Importante: Next.js 16 puede tener APIs distintas a versiones anteriores.
 > Antes de tocar rutas, metadata, server components, acciones, cache o config,
-> consulta la documentación local instalada en
-> `frontend/node_modules/next/dist/docs/`.
+> consulta la [documentación oficial de Next.js](https://nextjs.org/docs).
 
 ## Convenciones de implementación
 
@@ -249,6 +252,7 @@ frontend/               Next.js UI/SSR, hooks, componentes, assets publicos
 backend/src/            Express API, servicios, middleware, acceso Drizzle
 backend/src/modules/    Integraciones como modulos DDD (dominio/aplicacion/infra/http)
 backend/worker/         BullMQ workers, sync, migraciones y backfills
+admin/                  Panel admin standalone (Next.js: BFF app/api/* + RBAC)
 infra/db/               Esquema Drizzle + migraciones
 infra/k8s/              Deployments, Services, HPA, Jobs y Secrets ejemplo
 infra/tofu/             OpenTofu para Hetzner (red, k3s, Postgres, Valkey)
