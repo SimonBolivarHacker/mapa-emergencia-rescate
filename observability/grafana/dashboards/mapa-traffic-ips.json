@@ -20,7 +20,7 @@
       "description": "Access logs JSON desde el backend. La IP es real (clientIp). Para bloquear: copia la IP y métela en Cloudflare/firewall.",
       "targets": [
         {
-          "expr": "topk(20, sum by (ip) (count_over_time({tier=\"api\"} | json | t=\"access\" [$__range])))",
+          "expr": "topk(20, sum by (ip) (count_over_time({tier=\"api\"} | json | t=\"access\" | ip != \"\" [$__range])))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{ip}}"
@@ -34,7 +34,7 @@
       "datasource": { "type": "loki", "uid": "${logds}" },
       "targets": [
         {
-          "expr": "topk(10, sum by (ip) (rate({tier=\"api\"} | json | t=\"access\" [5m])))",
+          "expr": "topk(10, sum by (ip) (count_over_time({tier=\"api\"} | json | t=\"access\" | ip != \"\" [$__interval])))",
           "legendFormat": "{{ip}}"
         }
       ]
