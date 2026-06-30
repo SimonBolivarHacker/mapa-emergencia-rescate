@@ -39,7 +39,7 @@ prod, and verify the node-template/labels match the pool exactly.
 - [ ] **Rotate secrets** — `HCLOUD_TOKEN` + Hetzner S3 keys were exposed during
       setup; regenerate and re-upload.
 - [x] **Drizzle migrations** — done. `infra/db/schema.ts` is the source of
-      truth; migrations `0000`..`0008` live in `infra/db/migrations/` and the
+      truth; migrations `0000`..`0011` live in `infra/db/migrations/` and the
       gated migrate Job applies them via `worker/migrate.ts` (drizzle-orm
       `migrate()` at runtime, NOT the drizzle-kit CLI). Idempotent and
       re-runnable (tracked in `__drizzle_migrations`).

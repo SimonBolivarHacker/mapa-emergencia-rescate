@@ -8,7 +8,7 @@ IS NULL`, deterministic jobIds).
 > **Scope:** this `worker/` system is the **one-time backlog migration** (old
 > base64-in-DB photos + external image URLs → R2). NEW photos uploaded through
 > the live API no longer go through here — the app uploads them to R2 at ingest
-> time via `lib/r2.ts` (stores the CDN URL in the `photo` column, stamps
+> time via `backend/src/lib/r2.ts` (stores the CDN URL in the `photo` column, stamps
 > `photo_migrated_at`). See "App-side R2 (new uploads)" below.
 
 ## What it does

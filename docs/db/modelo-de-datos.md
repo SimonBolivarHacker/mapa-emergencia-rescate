@@ -4,15 +4,18 @@ Esquema de la base de datos (Neon Postgres / Hetzner `app`) del proyecto
 **Mapa de Emergencia y Rescate**.
 
 > **Fuente de verdad:** [`infra/db/schema.ts`](../../infra/db/schema.ts) (Drizzle)
-> define las **35 tablas** que existen en prod: canónicas activas (reportes,
+> define las **38 tablas** que existen en prod: canónicas activas (reportes,
 > personas, hospitales y su acopio `hospital_supply_*` / `hospital_poc_*`,
 > donaciones, contadores, sync) + `contact_messages` (ya en Drizzle) +
+> `earthquakes` (sismos USGS que ingiere el worker) +
 > `analytics_events`, `damage_candidates`, `unidentified_persons` (legado/externas
 > sin código de app, pero presentes en la base) + la federación `hub_*` con el
 > hub central (espejo read-only, ver RFC 0002) + el tier **RBAC/auth** del panel
 > admin (`capabilities`, `roles`, `role_capabilities`, `users`,
 > `permission_grants`, `invitations`, `password_resets`, `audit_log`; ver RFC
-> 0005). Si cambias el esquema, edita `schema.ts`, corre `npm run db:generate` y
+> 0005) + `api_keys` (llaves por usuario para `api/public/*`, #171) +
+> `hub_credentials` (libro mayor de consumidores SQL de la réplica pública, RFC
+> 0006). Si cambias el esquema, edita `schema.ts`, corre `npm run db:generate` y
 > luego actualiza este doc.
 
 ## Convenciones
@@ -52,6 +55,7 @@ Tomadas del código (ver cabecera de `schema.ts`):
 | `analytics_events` | legado/externa | `id` | Eventos de analítica (sin código de app) |
 | `damage_candidates` | legado/externa | `id` | Candidatos de daño estructural (sin código) |
 | `unidentified_persons` | legado/externa | `id` | Personas no identificadas (sin código) |
+| `earthquakes` | canónica | `id` | Sismos USGS (ingesta del worker; id natural USGS) |
 | `hub_missing_persons` | federación | `id` | Espejo read-only de desaparecidos del hub |
 | `hub_checkins` | federación | `id` | Espejo read-only de check-ins del hub |
 | `hub_help_requests` | federación | `id` | Espejo read-only de pedidos de ayuda del hub |
@@ -66,6 +70,8 @@ Tomadas del código (ver cabecera de `schema.ts`):
 | `invitations` | RBAC/auth | `id` | Alta por invitación (token de un solo uso) |
 | `password_resets` | RBAC/auth | `id` | Recuperación de contraseña por OTP |
 | `audit_log` | RBAC/auth | `id` | Bitácora de mutaciones sensibles |
+| `api_keys` | RBAC/auth | `id` | Llaves por usuario para `api/public/*` (`scopes` ⊆ caps del usuario) |
+| `hub_credentials` | RBAC/auth | `id` | Libro mayor de consumidores SQL de la réplica pública (RFC 0006) |
 
 ---
 

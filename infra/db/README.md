@@ -5,7 +5,7 @@ any runtime DDL: the old `CREATE TABLE IF NOT EXISTS` calls are gone (contact
 inbox, etc. now go through Drizzle in `backend/src/services`). The schema is
 explicit, versioned, and applied via real migration files — see *Workflow* below.
 
-## The 35 tables
+## The 38 tables
 
 | Table | Purpose | PK | Notable |
 |---|---|---|---|
@@ -30,6 +30,7 @@ explicit, versioned, and applied via real migration files — see *Workflow* bel
 | `analytics_events` | Analytics events (legacy/external) | `id` text | `metadata` jsonb |
 | `damage_candidates` | Structural-damage candidates (legacy/external) | `id` text | `damage_level`, `review_status` |
 | `unidentified_persons` | Unidentified persons (legacy/external) | `id` text | `status`, contact_* |
+| `earthquakes` | USGS seismic events (worker ingest) | `id` text | natural key (USGS id); `magnitude`, lat/lng, `occurred_at`, `usgs_updated_at` |
 | `hub_missing_persons` | Federated missing persons (hub mirror) | `id` text | `hub_id` (unique); RFC 0002 |
 | `hub_checkins` | Federated check-ins (hub mirror) | `id` text | `hub_id` (unique) |
 | `hub_help_requests` | Federated help requests (hub mirror) | `id` text | `hub_id` (unique) |
@@ -44,11 +45,16 @@ explicit, versioned, and applied via real migration files — see *Workflow* bel
 | `invitations` | Invite-based onboarding | `id` text | `token_hash` (sha256, single-use, expires) |
 | `password_resets` | Password recovery via 6-digit OTP | `id` text | `code_hash` (sha256), `attempts`, short expiry |
 | `audit_log` | Audit trail of every sensitive mutation | `id` bigserial | `action`, `target_*`, `metadata` jsonb, `ip_hash` |
+| `api_keys` | Per-user API keys for `api/public/*` (least-privilege) | `id` text | `key_hash` (sha256, never raw), `prefix`, `scopes` ⊆ user caps, soft-delete `revoked_at` |
+| `hub_credentials` | Ledger of public-replica (hub) SQL consumers (RFC 0006) | `id` text | `pg_role` (unique), `allowed_ip`, `hetzner_rule_ref`; password never stored; soft-delete `revoked_at` |
 
-> The last 8 tables are the **RBAC/auth tier** added with the standalone admin
-> panel (RFC 0005). `org_id` columns are present but NULL (global) today —
-> phase-2 multi-tenancy. The capability catalog lives in
-> `backend/src/auth/capabilities.ts` and is seeded into `capabilities`.
+> The `capabilities`…`audit_log` block plus `api_keys` is the **RBAC/auth tier**
+> added with the standalone admin panel (RFC 0005) and per-user API keys (#171).
+> `org_id` columns are present but NULL (global) today — phase-2 multi-tenancy.
+> The capability catalog lives in `backend/src/auth/capabilities.ts` and is seeded
+> into `capabilities`. `hub_credentials` (RFC 0006) is the ledger for the public
+> SQL replica: it lets a super admin revoke both the Postgres role and the Hetzner
+> firewall rule of each external consumer.
 
 ## Conventions
 
@@ -86,7 +92,7 @@ zero-downtime roll the OLD pods still run against the new schema, so add columns
 ## Migration state
 
 This plan is **done**. Migrations `0000_thankful_miss_america.sql` through
-`0008_omniscient_eternity.sql` live in `infra/db/migrations/`, the runtime
+`0011_thankful_lady_mastermind.sql` live in `infra/db/migrations/`, the runtime
 `CREATE TABLE IF NOT EXISTS` DDL has been removed from the app code, and
 `schema.ts` is the real source of truth applied through the migrate Job. There
 is no longer an `ensureSchema()` anywhere.

@@ -32,6 +32,7 @@ This file lists all documentation-related documents in the repository.
 - [0003-refactor-async-http-y-colas.md](docs/rfcs/0003-refactor-async-http-y-colas.md)
 - [0004-autoscaling-y-split-web-api.md](docs/rfcs/0004-autoscaling-y-split-web-api.md)
 - [0005-panel-admin-standalone.md](docs/rfcs/0005-panel-admin-standalone.md)
+- [0006-hub-replica-sql-publico.md](docs/rfcs/0006-hub-replica-sql-publico.md)
 
 ### Architecture — `docs/architecture/`
 - [architecture.md](docs/architecture/architecture.md)
@@ -43,6 +44,8 @@ This file lists all documentation-related documents in the repository.
 - [estructura-infra.md](docs/deploy/estructura-infra.md)
 - [migraciones-de-base-de-datos.md](docs/deploy/migraciones-de-base-de-datos.md)
 - [proceso-de-deploy.md](docs/deploy/proceso-de-deploy.md)
+- [ramas-y-promocion.md](docs/deploy/ramas-y-promocion.md)
+- [replica-publica-hub.md](docs/deploy/replica-publica-hub.md)
 
 ### Guides — `docs/guides/`
 - [documentar-endpoints-openapi.md](docs/guides/documentar-endpoints-openapi.md)

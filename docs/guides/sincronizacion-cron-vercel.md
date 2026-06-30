@@ -56,8 +56,10 @@ existentes); reintentar no duplica.
 | `SOURCE_DESAPARECIDOS_URL` | opcional | Override del endpoint de la fuente. |
 | `SOURCE_DESAPARECIDOS_IMPORT_CONTACT` | opcional | `true` para importar teléfonos (default `false`, ver RFC §6). |
 
-> ⚠️ `CRON_SECRET` es el error #1 al usar Vercel Cron. Si los crons devuelven 401
-> en los logs, casi siempre es que falta esa variable.
+> ⚠️ `CRON_SECRET` es el error #1 de los triggers de cron. `requireCron` valida
+> `Authorization: Bearer $CRON_SECRET` venga de donde venga (GitHub Actions,
+> QStash, Vercel Cron, etc.): si los crons devuelven 401 en los logs, casi
+> siempre es que falta esa variable.
 
 ## Pasos (camino primario: worker en Hetzner)
 

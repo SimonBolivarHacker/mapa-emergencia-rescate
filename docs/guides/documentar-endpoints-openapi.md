@@ -14,15 +14,18 @@ Ambos los sirve el backend (`backend/src/server.ts`, vía `swagger-ui-express`).
 ## Cómo funciona (runtime, al arrancar el servidor)
 
 ```
-backend/src/routes/*.ts        --(@swagger JSDoc)--┐
-backend/src/public-api/resources/*  --(config zod)--┤--> buildOpenApiSpec()
-                                                    └--> /api/openapi.json + /api/docs
+backend/src/routes/*.ts             --(@swagger JSDoc)--┐
+backend/src/modules/**/interface/http/*  --(@swagger)--┤
+backend/src/public-api/resources/*  --(config zod)-----┤--> buildOpenApiSpec()
+                                                       └--> /api/openapi.json + /api/docs
 ```
 
 - La spec se construye **una vez al arrancar** (`buildOpenApiSpec()` en
-  `backend/src/lib/swagger.ts`), uniendo DOS fuentes:
-  1. los bloques `@swagger` de los routes escritos a mano (`auth`, `sync`,
-     `admin`, etc.), escaneados por **`swagger-jsdoc`**;
+  `backend/src/lib/swagger.ts`), uniendo dos orígenes:
+  1. los bloques `@swagger` escaneados por **`swagger-jsdoc`** en TRES globs:
+     `routes/**` (routes a mano: `auth`, `sync`, `admin`, etc.),
+     `public-api/**` y `modules/**` (los módulos DDD, cuyo `@swagger` vive en su
+     capa `interface/http`);
   2. los paths CRUD derivados de la config de cada recurso de
      `backend/src/public-api/*` — la **misma** definición zod que valida la
      request (single source of truth), generados por `crud-factory.ts`.

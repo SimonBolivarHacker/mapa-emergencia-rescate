@@ -33,7 +33,7 @@ ADMIN DOMAIN  ──► Hetzner LB "admin-lb"      (admin tier, admin image)
               │  from the type=LoadBalancer Services (k8s/service.yaml)
               ▼
         k3s pods  (web 3×, api 3×, admin 2×, worker — "cattle", immutable)
-              │  health: web GET / (UI); api GET /api/readyz (DB ping); admin GET /api/health (BFF)
+              │  health: web TCP :3000 (UI, sin /readyz); api GET /api/readyz (DB ping); admin GET /api/health (BFF)
               ▼  (private network, 10.0.0.0/16)
      Postgres VPS (pet)        Valkey VPS (pet)
      DBs: app + imported       sessions + pub/sub + BullMQ
@@ -63,8 +63,9 @@ database in the cattle orchestrator.
 2. `kubectl set image` points the `web`, `api` and `admin` Deployments at the
    new `:<sha>`.
 3. k8s rolls each tier with **`maxUnavailable: 0` / `maxSurge: 1`** — a new pod
-   is created and must pass its readiness probe (web/api: `/api/readyz`, which
-   pings the DB; admin: `/api/health`) *before* any old pod is removed. Always
+   is created and must pass its readiness probe (web: TCP `:3000` — pura UI, sin
+   `/api/readyz`; api: `/api/readyz`, que hace ping a la DB; admin: `/api/health`)
+   *before* any old pod is removed. Always
    ≥1 pod serving per tier.
 4. `kubectl rollout status` blocks the job until each roll is healthy, else fails.
 5. Rollback: `kubectl -n mapa rollout undo deployment/<web|api|admin>` (roll back
@@ -74,7 +75,7 @@ database in the cattle orchestrator.
 
 The schema is **never** created lazily at runtime (no `CREATE TABLE IF NOT
 EXISTS`, no `ensureSchema()`). Source of truth is `db/schema.ts`
-(35 tables, including the RBAC/auth tier — see `db/README.md`); `db:generate`
+(38 tables, including the RBAC/auth tier — see `db/README.md`); `db:generate`
 emits the `.sql` files in `db/migrations/`. Before
 each roll, the gated **migrate Job** (`k8s/migrate-job.yaml`) runs the real
 drizzle-orm migrator (`worker/migrate.ts`, `npm run migrate`), which applies

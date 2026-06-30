@@ -130,7 +130,9 @@ npm run migrate
 
 > Importante: Next.js 16 puede tener APIs distintas a versiones anteriores.
 > Antes de tocar rutas, metadata, server components, acciones, cache o config,
-> consulta la [documentación oficial de Next.js](https://nextjs.org/docs).
+> consulta la documentación local instalada en
+> `frontend/node_modules/next/dist/docs/` (coincide con la versión del proyecto);
+> como respaldo, la [documentación oficial](https://nextjs.org/docs).
 
 ## Convenciones de implementación
 
