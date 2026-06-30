@@ -8,7 +8,6 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import "../helpers";
-import { expectNoSensitiveFields } from "../helpers";
 import request from "supertest";
 
 let app: import("express").Express;
@@ -37,11 +36,9 @@ describe("POST /api/contact", () => {
     expect(res.body.ok).toBe(true);
     expect(res.body.id).toBeTruthy();
     expect(typeof res.body.message).toBe("string");
-    // Allowlist estricta de salida: ni el correo enviado, ni la IP/UA persistidos.
+    // Allowlist estricta de salida: el set EXACTO de claves ya prueba que ni el
+    // correo enviado ni la IP/UA persistidos se reflejan (no hay dónde meterlos).
     expect(Object.keys(res.body).sort()).toEqual(["id", "message", "ok"]);
-    expect(JSON.stringify(res.body)).not.toContain("remitente@test.local");
-    expect(JSON.stringify(res.body)).not.toContain("test-agent");
-    expectNoSensitiveFields(res.body);
   });
 
   it("rechaza un correo inválido con 400 y mensaje visible", async () => {

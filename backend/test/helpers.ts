@@ -48,12 +48,12 @@ const FORBIDDEN_PUBLIC_KEYS = [
 ] as const;
 
 /**
- * Asierta que `value` (y todo objeto anidado) no expone ningún campo sensible.
- * `allow` permite exceptuar claves legítimamente públicas en un contexto dado
- * (p.ej. `contact` en una ficha de desaparecido, que sí es público por diseño).
+ * Asierta que `value` (y todo objeto anidado) no expone ninguna CLAVE sensible.
+ * Veta por NOMBRE de clave: un DTO público puede tener `contact` (público por
+ * diseño en la ficha de desaparecido) sin disparar nada, porque no es una clave
+ * `email`/`ip_hash`/etc. de la lista.
  */
-export function expectNoSensitiveFields(value: unknown, allow: string[] = []): void {
-  const forbidden = FORBIDDEN_PUBLIC_KEYS.filter((k) => !allow.includes(k));
+export function expectNoSensitiveFields(value: unknown): void {
   const walk = (node: unknown): void => {
     if (Array.isArray(node)) {
       node.forEach(walk);
@@ -61,7 +61,7 @@ export function expectNoSensitiveFields(value: unknown, allow: string[] = []): v
     }
     if (node && typeof node === "object") {
       for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
-        if (forbidden.includes(key as (typeof FORBIDDEN_PUBLIC_KEYS)[number])) {
+        if (FORBIDDEN_PUBLIC_KEYS.includes(key as (typeof FORBIDDEN_PUBLIC_KEYS)[number])) {
           throw new Error(`La respuesta pública filtró el campo sensible "${key}".`);
         }
         walk(child);

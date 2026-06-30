@@ -44,7 +44,9 @@ describe("POST /api/missing", () => {
     expect(res.body.person.photoUrl).toBe(`/api/missing/${id}/photo`);
     expect(res.body.person).not.toHaveProperty("photo");
     expect(JSON.stringify(res.body)).not.toContain("base64");
-    expectNoSensitiveFields(res.body, ["email"]); // `contact` puede contener un correo público
+    // El walker veta `photo`/ip_hash/etc por NOMBRE de clave; el DTO público
+    // expone `contact` (no una clave `email`), así que pasa sin excepciones.
+    expectNoSensitiveFields(res.body);
   });
 
   it("rechaza un reporte sin nombre con 400 y mensaje visible", async () => {
@@ -70,7 +72,7 @@ describe("GET /api/missing", () => {
     expect(found.photoUrl).toBe(`/api/missing/${id}/photo`);
     expect(found).not.toHaveProperty("photo");
     expect(JSON.stringify(res.body)).not.toContain("base64");
-    expectNoSensitiveFields(res.body, ["email"]);
+    expectNoSensitiveFields(res.body);
   });
 
   it("sirve la foto subida como bytes por el endpoint dedicado (control positivo)", async () => {

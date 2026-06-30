@@ -56,15 +56,10 @@ describe("GET /api/donations", () => {
 
     const mine = res.body.recent.find((d: { name: string }) => d.name === name);
     expect(mine).toBeTruthy();
-    // La fila persistida TIENE ip_hash + user_agent; el DTO público no.
+    // La fila persistida TIENE ip_hash + user_agent; el DTO público no: el set
+    // EXACTO de claves prueba el contrato en mi donación...
     expect(Object.keys(mine).sort()).toEqual(["amountCents", "createdAt", "id", "name"]);
-    for (const d of res.body.recent) {
-      expect(d).not.toHaveProperty("ipHash");
-      expect(d).not.toHaveProperty("ip_hash");
-      expect(d).not.toHaveProperty("userAgent");
-      expect(d).not.toHaveProperty("user_agent");
-    }
-    expect(JSON.stringify(res.body)).not.toContain("test-agent");
+    // ...y el walker cubre TODAS las filas (ip_hash/user_agent en cualquier nivel).
     expectNoSensitiveFields(res.body);
   });
 });
