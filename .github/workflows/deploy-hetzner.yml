@@ -410,6 +410,29 @@ jobs:
             --from-literal=token="$OBS_PUSH_TOKEN" \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      # Secret de auth de PgBouncer (pooler de conexiones, ADR 0007). Derivamos
+      # user/pass del DATABASE_URL que ya vive en app-env (provisionado) — así no
+      # hace falta un secret de GH nuevo y siempre coincide con la credencial real.
+      # PgBouncer usa estos para autenticarse contra Postgres (scram → necesita el
+      # password en claro, que es justo lo que hay en el URL). Idempotente.
+      - name: Ensure pgbouncer-auth secret
+        run: |
+          set -euo pipefail
+          if ! kubectl -n mapa get secret app-env >/dev/null 2>&1; then
+            echo "::warning::app-env no existe — no puedo derivar pgbouncer-auth. Skipping."
+            exit 0
+          fi
+          URL=$(kubectl -n mapa get secret app-env -o jsonpath='{.data.DATABASE_URL}' | base64 -d)
+          DB_USER=$(printf '%s' "$URL" | sed -E 's#^postgres(ql)?://([^:]+):.*#\2#')
+          DB_PASSWORD=$(printf '%s' "$URL" | sed -E 's#^postgres(ql)?://[^:]+:([^@]+)@.*#\2#')
+          if [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "::error::No pude parsear user/pass de DATABASE_URL"; exit 1
+          fi
+          kubectl -n mapa create secret generic pgbouncer-auth \
+            --from-literal=DB_USER="$DB_USER" \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       # Server-side runtime secrets (NO NEXT_PUBLIC_*): OpenPanel proxy,
       # contraseña admin, CORS cross-origin y Turnstile server-side.
       # app-env tiene TODAS las vars de runtime (DATABASE_URL, VALKEY_URL, R2_*,
@@ -569,6 +592,42 @@ jobs:
           cat /tmp/service.rendered.yaml
 
           kubectl apply -f /tmp/service.rendered.yaml
+
+          # --- PgBouncer (pooler de conexiones, ADR 0007) ---
+          # Solo el tier API (alto tráfico) se enruta por el pooler. Los carve-outs
+          # (migrate Job, migrate-worker, hub-credentials) leen DATABASE_URL del
+          # MISMO app-env y deben quedar DIRECTOS a Postgres, así que NO tocamos
+          # app-env. En su lugar, deployment.yaml define un env explícito
+          # DATABASE_URL en el contenedor api (override) que gana sobre envFrom.
+          if kubectl -n mapa get secret pgbouncer-auth >/dev/null 2>&1; then
+            kubectl apply -f infra/k8s/pgbouncer.yaml
+            # FALLAR el deploy si el pooler no converge: el api ahora apunta su
+            # DATABASE_URL al Service de PgBouncer, así que rodar el api sobre un
+            # pooler caído = outage (readyz pega a la DB por el pooler → todos los
+            # pods NotReady). Mejor abortar aquí y dejar el api anterior sirviendo.
+            if ! kubectl -n mapa rollout status deploy/pgbouncer --timeout=120s; then
+              echo "::error::pgbouncer no convergió — abortando antes de rodar el api (evita outage)."
+              kubectl -n mapa get pods -l app=pgbouncer -o wide || true
+              kubectl -n mapa logs -l app=pgbouncer --tail=40 || true
+              exit 1
+            fi
+            # Smoke real: que PgBouncer pueda de verdad AUTENTICAR contra Postgres
+            # (un tcpSocket ready no prueba que el backend auth funcione → falso-sano).
+            # Lanzamos un psql efímero a través del Service; si falla, abortamos.
+            if ! kubectl -n mapa run pgbouncer-smoke-"$RANDOM" --rm -i --restart=Never \
+                  --image=postgres:16 --quiet \
+                  --env=PGCONNECT_TIMEOUT=10 -- \
+                  psql "postgres://$(kubectl -n mapa get secret pgbouncer-auth -o jsonpath='{.data.DB_USER}' | base64 -d):$(kubectl -n mapa get secret pgbouncer-auth -o jsonpath='{.data.DB_PASSWORD}' | base64 -d)@pgbouncer.mapa.svc.cluster.local:6432/app" \
+                  -c 'select 1' >/dev/null 2>&1; then
+              echo "::error::PgBouncer no pudo autenticar/consultar Postgres (smoke falló) — abortando antes de rodar el api."
+              kubectl -n mapa logs -l app=pgbouncer --tail=40 || true
+              exit 1
+            fi
+            echo "PgBouncer convergió y autentica contra Postgres (smoke OK)."
+          else
+            echo "pgbouncer-auth ausente — se omite PgBouncer (api usa DB directa)."
+          fi
+
           # web + api Deployments (imagenes separadas, parcheadas en el paso Roll).
           kubectl apply -f infra/k8s/deployment.yaml
           # HPA por tier (web + api). metrics-server ya está en el clúster.
@@ -686,6 +745,39 @@ jobs:
           WEB_BASE: https://${{ vars.NEXT_PUBLIC_OPENPANEL_PRODUCTION_HOST || 'terremotovenezuela.app' }}
           API_BASE: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.terremotovenezuela.app' }}
         run: bash scripts/smoke.sh
+
+      # Purga de Cloudflare tras un deploy EXITOSO. Solo las páginas HTML
+      # cacheables (shells SSR con s-maxage largo): /, /acopio, /hospitales. NO
+      # purgamos JS/CSS (content-hashed: build nuevo = URL nueva, nunca stale) ni
+      # fotos (immutable). Purga POR-URL (Free plan no tiene purge por hostname).
+      # Sin esto, un cambio de markup del home quedaría stale hasta el TTL (1 año).
+      # Gateado: si faltan los secrets de Cloudflare, se salta (no rompe el deploy).
+      # Solo en deploy a prod (el front público); en staging no aplica.
+      - name: Purge Cloudflare HTML cache
+        if: ${{ success() }}
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_API_TOKEN:-}" ] || [ -z "${CF_ZONE_ID:-}" ]; then
+            echo "CF_PURGE_TOKEN/CF_ZONE_ID ausentes — se omite purga de Cloudflare."
+            exit 0
+          fi
+          if [ "${TARGET:-staging}" != "prod" ]; then
+            echo "TARGET=$TARGET (no prod) — se omite purga del front público."
+            exit 0
+          fi
+          resp=$(curl -fsS -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"files":[
+              "https://terremotovenezuela.app/",
+              "https://terremotovenezuela.app/acopio",
+              "https://terremotovenezuela.app/hospitales"
+            ]}') || { echo "::warning::Purga de Cloudflare falló (no bloquea el deploy)."; exit 0; }
+          echo "Cloudflare purge: $(printf '%s' "$resp" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("success"))' 2>/dev/null || echo "$resp")"
 
       # Pista de rollback manual si el deploy falla (el roll en sí ya gatea con
       # rollout status). NO revertimos automáticamente todavía: ver la nota de
