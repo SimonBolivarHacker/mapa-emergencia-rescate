@@ -30,8 +30,9 @@ Workflow: `.github/workflows/deploy-hetzner.yml` — **Deploy to Hetzner (k3s)**
 
 Antes de construir/desplegar corre el job **`verify`**: instala dependencias en
 `backend/` y `frontend/`, typecheckea la API, typecheckea el worker y corre el
-lint del frontend. El job `deploy` tiene `needs: verify`, así que un build roto
-NUNCA llega al clúster.
+lint del frontend. El job **`verify-admin`** corre `lint` + `typecheck` + `test`
+del panel (`admin/`). El job `deploy` tiene `needs: [verify, verify-admin]`, así
+que un build roto NUNCA llega al clúster.
 
 > **El guard real es a nivel de job.** Ambos jobs (`verify` y `deploy`) tienen:
 >
@@ -49,34 +50,37 @@ NUNCA llega al clúster.
 
 ## Qué hace, paso a paso
 
-1. **Build + push** de dos imágenes a GHCR, tag `:<sha>` y `:latest`:
+1. **Build + push** de tres imágenes a GHCR, tag `:<sha>` y `:latest`:
    - `frontend` (Next.js standalone, target `runtime`),
-   - `backend` (Express API + worker + migrador).
+   - `backend` (Express API + worker + migrador),
+   - `admin` (panel Next standalone; build-arg `APP_BUILD_SHA`).
 2. **kubectl** desde el secret `KUBECONFIG` (base64).
 3. **migrate-env** secret (NEON + R2) — re-aplicado por si cambió.
 4. **Sube `/_next/static` a R2** (push-then-roll, aditivo, nunca `--delete`):
    arregla el version-skew multi-pod sirviendo los assets content-hashed desde
-   el CDN.
-5. **Aplica manifests**: renderiza con `envsubst` los **dos `Service`** (web y
-   api) inyectando el perfil TLS por target (`WEB_TLS_ANNOTATIONS` /
-   `API_TLS_ANNOTATIONS`; api replica el perfil de web). Luego aplica:
+   el CDN (frontend en la raíz; panel bajo `/admin`).
+5. **Aplica manifests**: renderiza con `envsubst` los **tres `Service`** (web,
+   api y admin) inyectando el perfil TLS por target (`WEB_TLS_ANNOTATIONS` /
+   `API_TLS_ANNOTATIONS` / `ADMIN_TLS_ANNOTATIONS`; api y admin replican el
+   perfil de web). Luego aplica:
    - `deployment.yaml` (Deployment `web` con imagen frontend + Deployment `api`
-     con imagen backend),
+     con imagen backend + Deployment `admin` con imagen admin),
    - `hpa.yaml` (HPA por tier),
    - `cluster-autoscaler.yaml` (si existe su secret),
    - `worker-deployment` (si hay `migrate-env`).
 6. **Migración de esquema gateada** (Job `migrate-<sha>`): aplica las
    migraciones Drizzle pendientes ANTES del roll. Si falla, **la app NO rota**.
    Ver [migraciones-de-base-de-datos.md](migraciones-de-base-de-datos.md).
-7. **Roll zero-downtime**: `kubectl set image` + `rollout status` sobre
-   `deployment/web` y `deployment/api` (bloquea hasta que los pods nuevos estén
-   Ready y los viejos drenen). El `migrate-worker` se rola aparte.
+7. **Roll zero-downtime**: `kubectl set image` + `rollout status` en el loop
+   `for tier in web api admin` (bloquea hasta que los pods nuevos estén Ready y
+   los viejos drenen). El `migrate-worker` se rola aparte.
 
 ## `target`: staging vs prod (perfil TLS del LB)
 
-Hay **dos LoadBalancer**: `mapa-lb` (web, dominio público) y `mapa-api-lb`
-(api, terceros). El perfil TLS se inyecta por target con `envsubst` y la api
-**replica el perfil de web**.
+Hay **tres LoadBalancer**: `mapa-lb` (web, dominio público), `mapa-api-lb`
+(api, terceros) y `admin-lb` (panel, `admin.terremotovenezuela.app`). El perfil
+TLS se inyecta por target con `envsubst` y la api y el admin **replican el perfil
+de web**.
 
 | target | TLS | DNS |
 | --- | --- | --- |
@@ -108,7 +112,16 @@ necesites, córrelas **manualmente**:
 `TURNSTILE_SITE_KEY`, `OPENPANEL_CLIENT_SECRET`, `ADMIN_PASSWORD`,
 `CORS_ORIGINS`, `TURNSTILE_SECRET_KEY`, `NEON_DATABASE_URL`, `R2_ENDPOINT`,
 `R2_STATIC_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`,
-`R2_PUBLIC_BASE`, `HCLOUD_TOKEN`, `K3S_TOKEN`.
+`R2_PUBLIC_BASE`, `HCLOUD_TOKEN`, `K3S_TOKEN`,
+`JWT_SECRET`, `COOKIE_SECURE`, `APP_BASE_URL`,
+`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`,
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`.
+
+> **`JWT_SECRET` y `COOKIE_SECURE` son obligatorios en producción.** El backend
+> hace fail-fast (`process.exit`) si faltan — sin ellos el pod de API y el Job
+> `migrate` crashean al arrancar. `SEED_ADMIN_*` siembra el superadmin inicial
+> (idempotente). `SMTP_*` habilitan emails de invitación/reset; sin ellos
+> degradan a devolver el enlace en la respuesta JSON.
 
 Variables opcionales de repo:
 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_BASE` y
@@ -129,13 +142,14 @@ Variables opcionales de repo:
 
 ## Rollback
 
-Si el roll falla, el workflow lo dice. El image se sirve desde **dos
-Deployments** (`web` y `api`), así que para revertir a la versión anterior hay
-que rotar atrás **cada uno**:
+Si el roll falla, el workflow lo dice. La imagen se sirve desde **tres
+Deployments** (`web`, `api` y `admin`), así que para revertir a la versión
+anterior hay que rotar atrás **el tier afectado**:
 
 ```bash
 kubectl -n mapa rollout undo deployment/web
 kubectl -n mapa rollout undo deployment/api
+kubectl -n mapa rollout undo deployment/admin
 ```
 
 (Si el `migrate-worker` también se actualizó: `kubectl -n mapa rollout undo

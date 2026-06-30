@@ -1,11 +1,11 @@
 # Database models (Drizzle)
 
 `schema.ts` is the single source of truth for the database. There is no longer
-any runtime DDL: the old `CREATE TABLE IF NOT EXISTS` calls in lib/*.ts are gone
-(e.g. lib/contact-inbox.ts now goes through Drizzle). The schema is explicit,
-versioned, and applied via real migration files — see *Workflow* below.
+any runtime DDL: the old `CREATE TABLE IF NOT EXISTS` calls are gone (contact
+inbox, etc. now go through Drizzle in `backend/src/services`). The schema is
+explicit, versioned, and applied via real migration files — see *Workflow* below.
 
-## The 27 tables
+## The 35 tables
 
 | Table | Purpose | PK | Notable |
 |---|---|---|---|
@@ -36,6 +36,19 @@ versioned, and applied via real migration files — see *Workflow* below.
 | `hub_help_offers` | Federated help offers (hub mirror) | `id` text | `hub_id` (unique) |
 | `hub_damaged_buildings` | Federated damaged buildings (hub mirror) | `id` text | `hub_id` (unique) |
 | `hub_sync_state` | Per-type pagination cursor for the hub | `type` text | mirrors `sync_state` for federation |
+| `capabilities` | Fixed capability catalog (`resource:verb`) | `key` text | seeded by migration; not user-created |
+| `roles` | Admin-defined roles (rows, not enum) | `id` text | `is_system` (immutable seed admin), `org_id` (phase 2) |
+| `role_capabilities` | M:N role ↔ capability | (`role_id`,`capability_key`) | composite PK |
+| `users` | Authenticated users (admin panel, RBAC) | `id` text | `password_hash` (bcrypt, NULL while invited), `role_id`, `status` |
+| `permission_grants` | Individual capability on top of the role | `id` text | subject = user OR role; `expires_at`/`revoked_at` |
+| `invitations` | Invite-based onboarding | `id` text | `token_hash` (sha256, single-use, expires) |
+| `password_resets` | Password recovery via 6-digit OTP | `id` text | `code_hash` (sha256), `attempts`, short expiry |
+| `audit_log` | Audit trail of every sensitive mutation | `id` bigserial | `action`, `target_*`, `metadata` jsonb, `ip_hash` |
+
+> The last 8 tables are the **RBAC/auth tier** added with the standalone admin
+> panel (RFC 0005). `org_id` columns are present but NULL (global) today —
+> phase-2 multi-tenancy. The capability catalog lives in
+> `backend/src/auth/capabilities.ts` and is seeded into `capabilities`.
 
 ## Conventions
 
@@ -73,7 +86,7 @@ zero-downtime roll the OLD pods still run against the new schema, so add columns
 ## Migration state
 
 This plan is **done**. Migrations `0000_thankful_miss_america.sql` through
-`0006_dashing_charles_xavier.sql` live in `infra/db/migrations/`, the runtime
-`CREATE TABLE IF NOT EXISTS` DDL has been removed from lib/*.ts, and
+`0008_omniscient_eternity.sql` live in `infra/db/migrations/`, the runtime
+`CREATE TABLE IF NOT EXISTS` DDL has been removed from the app code, and
 `schema.ts` is the real source of truth applied through the migrate Job. There
 is no longer an `ensureSchema()` anywhere.

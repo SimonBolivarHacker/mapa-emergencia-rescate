@@ -5,7 +5,8 @@ perezosa de tablas en runtime dentro de la API.
 
 ## Fuente de verdad
 
-- **Esquema:** `infra/db/schema.ts` (Drizzle). Define las 27 tablas.
+- **Esquema:** `infra/db/schema.ts` (Drizzle). Define las 35 tablas (incluye el
+  tier RBAC/auth del panel admin; ver [modelo de datos](../db/modelo-de-datos.md)).
 - **Migraciones generadas:** `infra/db/migrations/*.sql` (+ `meta/_journal.json`).
 - **Config drizzle-kit:** `infra/db/drizzle.config.ts`.
 - **Acceso desde la app:** `backend/src/db` (`getDb()`, helper central).
