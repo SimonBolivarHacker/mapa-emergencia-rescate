@@ -97,18 +97,24 @@ app.get("/api/healthz", (_req, res) => res.json({ ok: true }));
 // Nunca expone el error real (podría filtrar DATABASE_URL); loguea genérico.
 const READYZ_DB_TIMEOUT_MS = 2_000;
 app.get("/api/readyz", async (_req, res) => {
+  // getDb() es síncrono (crea el Pool sin I/O; la conexión es perezosa).
+  const db = getDb();
+  // Timeout con clearTimeout en finally: si el query gana la carrera, no dejamos
+  // un timer vivo ~2s por request.
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const db = await getDb();
     await Promise.race([
       db.execute(sql`select 1`),
-      new Promise((_resolve, reject) =>
-        setTimeout(() => reject(new Error("readyz: db timeout")), READYZ_DB_TIMEOUT_MS),
-      ),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("readyz: db timeout")), READYZ_DB_TIMEOUT_MS);
+      }),
     ]);
     res.json({ ok: true });
   } catch {
     console.warn("readyz: db unreachable");
     res.status(503).json({ ok: false });
+  } finally {
+    clearTimeout(timer);
   }
 });
 
