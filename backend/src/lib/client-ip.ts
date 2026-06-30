@@ -14,7 +14,14 @@ import { env } from "@/config/env";
  * a un header arbitrario del cliente.
  */
 export function clientIp(req: Request): string {
-  const header = env.TRUSTED_IP_HEADER;
+  // En PRODUCCIÓN el backend SIEMPRE está detrás de Cloudflare → la única IP de
+  // cliente NO falsificable es cf-connecting-ip. La forzamos en duro (ignorando
+  // TRUSTED_IP_HEADER) para que un valor mal provisionado en app-env (p.ej.
+  // "x-forwarded-for", que devolvía la IP del LB/Cloudflare y rompía rate-limit
+  // + el panel de IPs) NO pueda volver a romper esto. En dev se respeta
+  // TRUSTED_IP_HEADER (vacío → req.ip), porque ahí no hay Cloudflare delante.
+  const header =
+    env.NODE_ENV === "production" ? "cf-connecting-ip" : env.TRUSTED_IP_HEADER;
   if (header) {
     const v = req.headers[header.toLowerCase()];
     const raw = Array.isArray(v) ? v[0] : v;
