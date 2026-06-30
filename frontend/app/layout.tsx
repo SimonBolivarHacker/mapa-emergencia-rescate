@@ -13,42 +13,42 @@ import { SITE_URL } from "@/lib/site";
 const stara = localFont({
   src: [
     {
-      path: "./fonts/stara/Stara-Medium.otf",
+      path: "./fonts/stara/Stara-Medium.woff2",
       weight: "500",
       style: "normal",
     },
     {
-      path: "./fonts/stara/Stara-MediumItalic.otf",
+      path: "./fonts/stara/Stara-MediumItalic.woff2",
       weight: "500",
       style: "italic",
     },
     {
-      path: "./fonts/stara/Stara-SemiBold.otf",
+      path: "./fonts/stara/Stara-SemiBold.woff2",
       weight: "600",
       style: "normal",
     },
     {
-      path: "./fonts/stara/Stara-SemiBoldItalic.otf",
+      path: "./fonts/stara/Stara-SemiBoldItalic.woff2",
       weight: "600",
       style: "italic",
     },
     {
-      path: "./fonts/stara/Stara-Bold.otf",
+      path: "./fonts/stara/Stara-Bold.woff2",
       weight: "700",
       style: "normal",
     },
     {
-      path: "./fonts/stara/Stara-BoldItalic.otf",
+      path: "./fonts/stara/Stara-BoldItalic.woff2",
       weight: "700",
       style: "italic",
     },
     {
-      path: "./fonts/stara/Stara-ExtraBold.otf",
+      path: "./fonts/stara/Stara-ExtraBold.woff2",
       weight: "800",
       style: "normal",
     },
     {
-      path: "./fonts/stara/Stara-Black.otf",
+      path: "./fonts/stara/Stara-Black.woff2",
       weight: "900",
       style: "normal",
     },
