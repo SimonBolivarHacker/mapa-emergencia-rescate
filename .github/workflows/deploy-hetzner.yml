@@ -147,6 +147,10 @@ jobs:
     name: deploy
     runs-on: ubuntu-latest
     needs: [verify, verify-admin]
+    # Lee los secrets del Environment `production-hetzner` (sube con
+    # ./upload-github-secrets.sh -f .env -e production-hetzner). Da además reglas
+    # de protección de entorno (revisores/branches) sobre el deploy a prod.
+    environment: production-hetzner
     # Mismo gate que verify: push a main (un merge de PR aterriza aquí), o
     # dispatch manual. El "no desplegar en push crudo / bypass de admin" lo impone
     # el ruleset de protección de main (PR + review obligatorios), no el trigger.

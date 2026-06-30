@@ -77,6 +77,11 @@ async function withHubAdmin<T>(fn: (c: Client) => Promise<T>): Promise<T> {
   const client = new Client({ connectionString: assertConfigured() });
   await client.connect();
   try {
+    // El hub fuerza `default_transaction_read_only = on` (red de seguridad para
+    // consumidores). El rol admin SÍ necesita escribir (CREATE/DROP ROLE, GRANT),
+    // así que apagamos el read-only SOLO en esta sesión efímera. Sin esto cada
+    // CREATE ROLE falla con 25006 "cannot execute ... in a read-only transaction".
+    await client.query("SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE");
     return await fn(client);
   } finally {
     await client.end();

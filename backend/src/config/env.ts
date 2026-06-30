@@ -62,6 +62,11 @@ const schema = z.object({
   QUEUE_REMOVE_ON_COMPLETE: z.coerce.number().default(1000),
   QUEUE_REMOVE_ON_FAIL: z.coerce.number().default(5000),
 
+  // R2 (fotos/CDN): el helper lib/r2.ts lee process.env directo; aquí solo
+  // documentamos el prefijo de namespace. Vacío en prod (keys `images/...`);
+  // en staging = "staging" para aislar fotos en el MISMO bucket sin pisar prod.
+  R2_KEY_PREFIX: z.string().default(""),
+
   // Proxy de analítica OpenPanel (route op/[...op]). Opcionales.
   OPENPANEL_API_URL: z.string().default("https://api.openpanel.dev"),
   OPENPANEL_CLIENT_SECRET: z.string().optional(),

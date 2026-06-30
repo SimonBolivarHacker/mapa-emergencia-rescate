@@ -116,6 +116,7 @@ acción.
 - [Migraciones de base de datos (Drizzle)](deploy/migraciones-de-base-de-datos.md)
 - [Estructura de la infraestructura](deploy/estructura-infra.md)
 - [Réplica pública (hub SQL) — runbook](deploy/replica-publica-hub.md)
+- [Ramas, ruleset y promoción (staging → main)](deploy/ramas-y-promocion.md)
 
 ### Infraestructura e integraciones
 
