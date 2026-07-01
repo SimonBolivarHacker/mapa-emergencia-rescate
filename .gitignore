@@ -70,3 +70,7 @@ Emergencia nacional de búsqueda.zip
 .claude/commands/*
 upload-github-secrets.sh
 node_modules/
+
+# artefactos de agent workspace (no son parte del proyecto)
+.cursor/
+.scope.json

@@ -1,10 +1,10 @@
 "use client";
 
+import type L from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import L from "leaflet";
 import { MapContainer, Marker, TileLayer, ZoomControl } from "react-leaflet";
 import EdificiosAfectadosLayer from "@/components/features/map/EdificiosAfectadosLayer";
-import { draftIcon as makeDraftIcon } from "./icons";
+import { MissingClusterLayer } from "./ClusterLayer";
 import {
 	BoundsHandler,
 	ClickHandler,
@@ -13,9 +13,10 @@ import {
 	FlyToHandler,
 	ResizeHandler,
 } from "./handlers";
-import { MissingClusterLayer } from "./ClusterLayer";
+import { draftIcon as makeDraftIcon } from "./icons";
 import { ReportMarker } from "./ReportMarker";
 import type { MapViewProps } from "./types";
+import WeatherLayer from "./WeatherLayer";
 
 export type { MapBounds, MapViewProps } from "./types";
 
@@ -35,6 +36,8 @@ function MapViewInner({
 	zoom,
 	fitRequest = null,
 	showEdificios = false,
+	showRain = false,
+	showClouds = false,
 }: MapViewProps) {
 	const markerRefs = useRef<Map<string, L.Marker>>(new Map());
 	const getMarker = useCallback((id: string) => markerRefs.current.get(id), []);
@@ -60,6 +63,9 @@ function MapViewInner({
 			<EscClosePopup />
 
 			{showEdificios && <EdificiosAfectadosLayer />}
+			{(showRain || showClouds) && (
+				<WeatherLayer showRain={showRain} showClouds={showClouds} />
+			)}
 			<BoundsHandler onBoundsChange={onBoundsChange} />
 			<ClickHandler onPick={onPick} />
 

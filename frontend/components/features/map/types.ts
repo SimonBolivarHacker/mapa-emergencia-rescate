@@ -1,5 +1,5 @@
-import type { EmergencyReport } from "@/lib/types";
 import type { MissingMapMarker } from "@/hooks/missing";
+import type { EmergencyReport } from "@/lib/types";
 
 export type MapBounds = {
 	north: number;
@@ -26,4 +26,8 @@ export interface MapViewProps {
 	fitRequest?: { points: { lat: number; lng: number }[]; ts: number } | null;
 	/** Muestra la capa de edificios afectados (snapshot de sismovenezuela.org). */
 	showEdificios?: boolean;
+	/** Overlay meteorologico: radar de lluvia (RainViewer, sin API key). */
+	showRain?: boolean;
+	/** Overlay meteorologico: nubes globales (matteason/live-cloud-maps, sin API key). */
+	showClouds?: boolean;
 }
