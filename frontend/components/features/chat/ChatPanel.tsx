@@ -418,7 +418,7 @@ export default function ChatPanel() {
               }}
               rows={2}
               maxLength={MAX_TEXT}
-              placeholder="Escribe un mensaje…"
+              placeholder="Describe la ayuda que puedes ofrecer"
               className="flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
             />
             <button
