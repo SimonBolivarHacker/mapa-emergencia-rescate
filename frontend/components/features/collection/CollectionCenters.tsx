@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  ACOPIO_DEFAULT_FILTERS,
   useCollectionCenters,
   type CollectionCenter,
 } from "@/hooks/acopio";
@@ -31,7 +32,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 const PAGE_SIZE = 24;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const DEFAULT_COUNTRY = "Venezuela";
+const DEFAULT_COUNTRY = ACOPIO_DEFAULT_FILTERS.country ?? "";
 
 function locationLabel(center: CollectionCenter): string {
   return [center.city, center.country].filter(Boolean).join(" · ");
