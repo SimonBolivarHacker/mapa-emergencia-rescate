@@ -8,6 +8,8 @@ import MourningRibbon from "@/components/layout/MourningRibbon";
 import OpenPanelProduction from "@/components/layout/OpenPanelProduction";
 import ThemeProvider from "@/components/layout/ThemeProvider";
 import QueryProvider from "@/components/layout/QueryProvider";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { graph, organizationSchema, ORG_ID, WEBSITE_ID } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/site";
 
 const stara = localFont({
@@ -136,36 +138,37 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "WebSite",
-        name: "Mapa Emergencia VE",
-        url: SITE_URL,
-        inLanguage: "es-VE",
-        description: SITE_DESC,
-      },
-      {
-        "@type": "EmergencyService",
-        name: "Plataforma ciudadana de coordinación de rescate",
-        areaServed: { "@type": "Country", name: "Venezuela" },
-        url: SITE_URL,
-      },
-      {
-        "@type": "SpecialAnnouncement",
-        name: "Mapa colaborativo del terremoto en Venezuela",
-        text: SITE_DESC,
-        datePosted: new Date().toISOString(),
-        category: "https://www.wikidata.org/wiki/Q8068",
-        spatialCoverage: { "@type": "Country", name: "Venezuela" },
-        url: SITE_URL,
-      },
-    ],
-  };
+  const jsonLd = graph(
+    organizationSchema(),
+    {
+      "@type": "WebSite",
+      "@id": WEBSITE_ID,
+      name: "Mapa Emergencia VE",
+      url: SITE_URL,
+      inLanguage: "es-VE",
+      description: SITE_DESC,
+      publisher: { "@id": ORG_ID },
+    },
+    {
+      "@type": "EmergencyService",
+      name: "Plataforma ciudadana de coordinación de rescate",
+      areaServed: { "@type": "Country", name: "Venezuela" },
+      url: SITE_URL,
+      provider: { "@id": ORG_ID },
+    },
+    {
+      "@type": "SpecialAnnouncement",
+      name: "Mapa colaborativo del terremoto en Venezuela",
+      text: SITE_DESC,
+      datePosted: new Date().toISOString(),
+      category: "https://www.wikidata.org/wiki/Q8068",
+      spatialCoverage: { "@type": "Country", name: "Venezuela" },
+      url: SITE_URL,
+    },
+  );
   return (
     <html
-      lang="es"
+      lang="es-VE"
       data-dark="false"
       className={`${stara.variable} ${spaceGrotesk.variable} h-full overflow-x-hidden antialiased`}
       suppressHydrationWarning
@@ -211,12 +214,7 @@ export default function RootLayout({
           {children}
         </QueryProvider>
         <PwaRegister />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-          }}
-        />
+        <JsonLd data={jsonLd} />
       </body>
       <GoogleAnalytics gaId="G-CHV8FZE23K" />
     </html>
