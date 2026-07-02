@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production-hetzner
     env:
-      IMAGE: ghcr.io/globalemergency/mapa-emergencia-rescate
+      IMAGE: ghcr.io/simonbolivarhacker/mapa-emergencia-rescate
       SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v7
